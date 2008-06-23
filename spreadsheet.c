@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -285,7 +286,10 @@ static void write_file (void) {
 static void read_file (void) {
     assert (filename);
     FILE *file = fopen (filename, "r");
-    if (!file) return;
+    if (!file) {
+        error (strerror (errno));
+        return;
+    }
     char line[1024];
     while (fgets (line, sizeof line, file)) {
         unsigned r, c;
