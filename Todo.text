@@ -1,0 +1,64 @@
+in value mode, show current cell's plaint, if any, in the plaint line
+
+get circular-reference plaints to appear
+
+color-code formulas/values/labels/plaints
+
+make = a keystroke command
+be able to abort edits with C-g
+left and right arrow, C-a, C-e -- during editing
+
+let overwide cell display overflow into any empty cells adjacent to
+the right
+
+aggregates over cell ranges
+
+grid bigger than the screen
+
+highlight and navigate dependents/dependencies of the current cell
+
+make global settings from a spreadsheet: search for a setting-name and
+pick the value out of the cell next to it
+
+boring practicality: 
+  use decimal arithmetic
+  numeric decimal formatting widths
+
+table lookup (for tax tables)
+conditional expressions
+
+"Minimal-keystroke formula entry: type "1.1*" then move the cursor
+then type "-1" to enter a formula. The goal here was to make it worth
+using the first time you needed an answer (instead of a calculator and
+paper) in a way that would let you benefit the next time by just
+changing a few values and recalculating. If the input style did not
+let you "teach" the computer by doing the calculation, people may not
+have used it."
+http://j2k.naver.com/j2k.php/heightK/www.bricklin.com/firstspreadsheetquestion.htm
+
+----------------------------------------------------------
+
+a pivoting spreadsheet
+
+----------------------------------------------------------
+
+callable spreadsheets as functions
+
+----------------------------------------------------------
+done:
+
+indicate whether we're showing formulas or values
+comments
+save/restore
+copy formulas
+relative cell reference
+bugfix: invalidate *everything* after assigning
+complain() should advance the scanner to the end
+handle overflow of input field without blowing up
+proper error handling
+use home() instead of clear_screen()
+overflow marker when cell contents don't fit
+show current cell's formula on its own line
+make formulas start with = (instead of comments starting with #)
+top-level plaint line
+plaints from non-evaluation functions like file loading & bad keypress
