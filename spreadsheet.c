@@ -383,13 +383,16 @@ static void show_input (void) {
     fflush (stdout);
 }
 
-static void edit_loop (void) {
+// Return true iff the user commits a change.
+static int edit_loop (void) {
     size_t p = strlen (input);
     for (;;) {
         show_input ();
         int c = getchar ();
         if (c == '\r' || c == EOF)
-            break;
+            return 1;
+        else if (c == 7) // C-g
+            return 0;
         else if (c == '\b' || c == 127) { // backspace
             if (0 < p)
                 input[--p] = '\0';
@@ -403,8 +406,10 @@ static void edit_loop (void) {
 
 static void enter_formula (void) {
     strncpy (input, cells[row][col].formula, sizeof input - 1);
-    edit_loop ();
-    set_formula (row, col, input);
+    if (edit_loop ())
+        set_formula (row, col, input);
+    else
+        error ("Aborted");
 }
 
 static void copy_formula (unsigned r, unsigned c) {

@@ -3,7 +3,6 @@ get circular-reference plaints to appear
 color-code formulas/values/labels/plaints
 
 make = a keystroke command
-be able to abort edits with C-g
 left and right arrow, C-a, C-e -- during editing
 
 let overwide cell display overflow into any empty cells adjacent to
@@ -61,3 +60,4 @@ make formulas start with = (instead of comments starting with #)
 top-level plaint line
 plaints from non-evaluation functions like file loading & bad keypress
 show current cell's plaint, if any, in the plaint line
+be able to abort edits with C-g
