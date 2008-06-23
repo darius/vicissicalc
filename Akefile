@@ -1,0 +1,6 @@
+all: spreadsheet
+
+spreadsheet: spreadsheet.o
+
+clean:
+	rm -f *.o spreadsheet
