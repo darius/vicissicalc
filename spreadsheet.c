@@ -418,18 +418,18 @@ static void reactor_loop (void) {
         refresh ();
         int ch = getchar ();
         if      (ch == ' ') enter_formula ();
-        else if (ch == 'a') col = (col == 0 ? 0 : col-1);
-        else if (ch == 'e') row = (row+1 == rows ? row : row+1);
         else if (ch == 'f') view = formulas;
-        else if (ch == 'o') row = (row == 0 ? 0 : row-1);
+        else if (ch == 'h') col = (col == 0 ? 0 : col-1);        // left
+        else if (ch == 'j') row = (row == 0 ? 0 : row-1);        // up
+        else if (ch == 'k') row = (row+1 == rows ? row : row+1); // down
+        else if (ch == 'l') col = (col+1 == cols ? col : col+1); // right
         else if (ch == 'q') break;
-        else if (ch == 'u') col = (col+1 == cols ? col : col+1);
         else if (ch == 'v') view = values;
         else if (ch == 'w') write_file ();
-        else if (ch == 'A') copy_formula (row, col == 0 ? 0 : col-1);
-        else if (ch == 'E') copy_formula (row+1 == rows ? row : row+1, col);
-        else if (ch == 'O') copy_formula (row == 0 ? 0 : row-1, col);
-        else if (ch == 'U') copy_formula (row, col+1 == cols ? col : col+1);
+        else if (ch == 'H') copy_formula (row, col == 0 ? 0 : col-1);
+        else if (ch == 'J') copy_formula (row == 0 ? 0 : row-1, col);
+        else if (ch == 'K') copy_formula (row+1 == rows ? row : row+1, col);
+        else if (ch == 'L') copy_formula (row, col+1 == cols ? col : col+1);
         else                error ("Unknown key");
     }
 }
