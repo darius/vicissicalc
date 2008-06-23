@@ -1,5 +1,3 @@
-in value mode, show current cell's plaint, if any, in the plaint line
-
 get circular-reference plaints to appear
 
 color-code formulas/values/labels/plaints
@@ -62,3 +60,4 @@ show current cell's formula on its own line
 make formulas start with = (instead of comments starting with #)
 top-level plaint line
 plaints from non-evaluation functions like file loading & bad keypress
+show current cell's plaint, if any, in the plaint line

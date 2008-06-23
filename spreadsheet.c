@@ -330,6 +330,10 @@ static void show_at (unsigned r, unsigned c, View view) {
     aterm_set_foreground (aterm_black);
 }
 
+static const char *orelse (const char *s1, const char *s2) {
+    return s1 ? s1 : s2;
+}
+
 static void show (View view, unsigned cursor_row, unsigned cursor_col) {
     unsigned r, c;
     aterm_home ();
@@ -354,7 +358,8 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
         }
         printf ("\r\n");
     }
-    printf ("%-80.80s", the_plaint ? the_plaint : "");
+    printf ("%-80.80s",
+            orelse (the_plaint, orelse (cells[cursor_row][cursor_col].plaint, "")));
     the_plaint = NULL;
     aterm_clear_to_bottom ();
 }
