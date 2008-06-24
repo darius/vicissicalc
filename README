@@ -10,9 +10,9 @@ To build it:
    $ ./ake
 
 To run it:
-   $ ./spreadsheet
+   $ ./vicissicalc
 or:
-   $ ./spreadsheet filename
+   $ ./vicissicalc filename
 
 
 Requirements:

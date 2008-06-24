@@ -1,6 +1,6 @@
-all: spreadsheet
+all: vicissicalc
 
-spreadsheet: spreadsheet.o
+vicissicalc: vicissicalc.o
 
 clean:
-	rm -f *.o spreadsheet
+	rm -f *.o vicissicalc
