@@ -86,7 +86,7 @@ static void next (Context *s) {
         s->token_value = strtod (s->p, &endptr);
         s->p = endptr;
     }
-    else if (strchr ("@+-*/%^()cr", *s->p))
+    else if (strchr ("+-*/%^@cr()", *s->p))
         s->token = *s->p++;
     else {
         complain (s, "Syntax error: unknown token type");
