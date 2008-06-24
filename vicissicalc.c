@@ -78,7 +78,7 @@ static void complain (Context *s, const char *msg) {
 static void next (Context *s) {
     while (isspace (*s->p))
         s->p++;
-    if (*s->p == '\0' || *s->p == '#')
+    if (*s->p == '\0')
         s->token = '\0';
     else if (isdigit (*s->p)) {
         char *endptr;
