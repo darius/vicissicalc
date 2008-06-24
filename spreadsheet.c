@@ -97,28 +97,19 @@ static void next (Context *s) {
 static Value parse_expr (Context *s, int precedence);
 
 static Value parse_factor (Context *s) {
-    Value v;
+    Value v = s->token_value;
     switch (s->token) {
-        case '0':
-            v = s->token_value;
-            next (s);
-            return v;
-        case '-':                       // unary minus
-            next (s);
-            return -parse_factor (s);
+        case '0': next (s); return v;
+        case '-': next (s); return -parse_factor (s);
+        case 'c': next (s); return s->col;
+        case 'r': next (s); return s->row;
         case '(':
-            next (s);
+            next (s); 
             v = parse_expr (s, 0);
             if (s->token != ')')
                 complain (s, "Syntax error: expected ')'");
             next (s);
             return v;
-        case 'c':
-            next (s);
-            return s->col;
-        case 'r':
-            next (s);
-            return s->row;
         default:
             complain (s, "Syntax error: expected a factor");
             next (s);
@@ -183,7 +174,7 @@ static const char *evaluate (Value *result,
     context.col = c;
     next (&context);
     *result = parse_expr (&context, 0);
-    if (context.p[0] != '\0')
+    if (context.token != '\0')
         complain (&context, "Syntax error: unexpected token");
     return context.plaint;
 }

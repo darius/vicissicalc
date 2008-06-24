@@ -1,3 +1,5 @@
+try shortening the evaluator using the Pratt parser
+
 get circular-reference plaints to appear
 
 color-code formulas/values/labels/plaints
