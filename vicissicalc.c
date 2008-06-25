@@ -49,7 +49,9 @@ enum {
     aterm_cyan,
     aterm_white
 };
-static void aterm_set_foreground (unsigned color) { printf (ansi "%um", 30 + color); }
+static void aterm_set_foreground (unsigned color) {
+  printf (ansi "%um", 30 + color);
+}
 
 
 // Evaluating expressions
@@ -127,7 +129,8 @@ static Value apply (Context *s, char rator, Value lhs, Value rhs) {
         case '^': return pow (lhs, rhs);
         case '@': {
             Value value;
-            const char *plaint = get_value (&value, (unsigned) lhs, (unsigned) rhs);
+            const char *plaint = get_value (&value,
+                                            (unsigned) lhs, (unsigned) rhs);
             if (plaint)
                 complain (s, "");
             return value;
@@ -197,7 +200,7 @@ struct Cell {
     const char *plaint;
 };
 
-enum { rows = 24, cols = 4 };
+enum { rows = 20, cols = 4 };
 
 static Cell cells[rows][cols];
 
@@ -225,14 +228,15 @@ static void set_formula (unsigned row, unsigned col, const char *formula) {
 
 static void update (unsigned r, unsigned c) {
     assert (r < rows && c < cols);
-    cells[r][c].state = calculating;
-    const char *plaint = evaluate (&cells[r][c].value, cells[r][c].formula, r, c);
+    Cell *cell = &cells[r][c];
+    cell->state = calculating;
+    const char *plaint = evaluate (&cell->value, cell->formula, r, c);
     if (plaint) {
-        cells[r][c].state = failed;
-        cells[r][c].plaint = plaint;
+        cell->state = failed;
+        cell->plaint = plaint;
         error (plaint);
     } else
-        cells[r][c].state = valid;
+        cell->state = valid;
 }
 
 static const char *get_value (Value *value, unsigned r, unsigned c) {
@@ -354,7 +358,8 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
         printf ("\r\n");
     }
     printf ("%-80.80s",
-            orelse (the_plaint, orelse (cells[cursor_row][cursor_col].plaint, "")));
+            orelse (the_plaint,
+                    orelse (cells[cursor_row][cursor_col].plaint, "")));
     the_plaint = NULL;
     aterm_clear_to_bottom ();
 }
