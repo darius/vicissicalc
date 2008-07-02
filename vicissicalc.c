@@ -165,8 +165,8 @@ static Value parse_expr (Context *s, int precedence) {
     }
 }
 
-// XXX rename
-static const char *get_formula (const char *s) {
+// A formula, if it's given, follows the '=' prefix.
+static const char *find_formula (const char *s) {
     const char *t = s + strspn (s, " \t");
     return *t == '=' ? t + 1 : NULL;
 }
@@ -175,7 +175,7 @@ static const char *evaluate (Value *result,
                              const char *expression, unsigned r, unsigned c) {
     Context context;
     context.plaint = NULL;
-    context.p = get_formula (expression);
+    context.p = find_formula (expression);
     if (!context.p)
         return "No formula";
     context.row = r;
@@ -319,7 +319,7 @@ typedef enum { formulas, values } View;
 static void show_at (unsigned r, unsigned c, View view) {
     char text[1024];
     unsigned color = aterm_black;
-    const char *formula = get_formula (cells[r][c].formula);
+    const char *formula = find_formula (cells[r][c].formula);
     if (view == formulas || !formula)
         strncpy (text, formula ? formula : cells[r][c].formula, sizeof text);
     else {
