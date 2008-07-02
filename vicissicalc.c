@@ -9,16 +9,16 @@
 
 // Utilities
 
-static FILE *open_file (const char *filename, const char *mode) {
-    FILE *f = fopen (filename, mode);
-    assert (f);                 // XXX handle properly
-    return f;
+static void panic (const char *plaint) {
+    system ("stty sane");
+    fprintf (stderr, "%s\n", plaint);
+    exit (1);
 }
 
 // Really strdup, but that name may be taken.
 static char *copy (const char *s) {
     char *result = malloc (strlen (s) + 1);
-    assert (result);  // XXX
+    if (!result) panic ("Out of memory");
     strcpy (result, s);
     return result;
 }
@@ -268,11 +268,19 @@ static const char *get_value (Value *value, unsigned r, unsigned c) {
 
 // File loading/saving
 
+static FILE *open_file (const char *filename, const char *mode) {
+    FILE *f = fopen (filename, mode);
+    if (!f)
+        error (strerror (errno));
+    return f;
+}
+
 static const char *filename = NULL;
 
 static void write_file (void) {
     assert (filename);
     FILE *file = open_file (filename, "w");
+    if (!file) return;
     unsigned r, c;
     for (r = 0; r < rows; ++r)
         for (c = 0; c < cols; ++c) {
@@ -286,10 +294,7 @@ static void write_file (void) {
 static void read_file (void) {
     assert (filename);
     FILE *file = fopen (filename, "r");
-    if (!file) {
-        error (strerror (errno));
-        return;
-    }
+    if (!file) return;
     char line[1024];
     while (fgets (line, sizeof line, file)) {
         unsigned r, c;
