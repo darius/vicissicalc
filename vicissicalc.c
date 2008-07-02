@@ -119,13 +119,18 @@ static Value parse_factor (Context *s) {
     }
 }
 
+static Value zero_divide (Context *s) {
+    complain (s, "Divide by 0");
+    return 0;
+}
+
 static Value apply (Context *s, char rator, Value lhs, Value rhs) {
     switch (rator) {
         case '+': return lhs + rhs;
         case '-': return lhs - rhs;
         case '*': return lhs * rhs;
-        case '/': return lhs / rhs;  // XXX check for 0
-        case '%': return fmod (lhs, rhs);
+        case '/': return rhs == 0 ? zero_divide (s) : lhs / rhs;
+        case '%': return rhs == 0 ? zero_divide (s) : fmod (lhs, rhs);
         case '^': return pow (lhs, rhs);
         case '@': {
             Value value;
