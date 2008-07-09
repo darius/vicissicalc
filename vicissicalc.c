@@ -36,8 +36,6 @@ static int is_blank (const char *s) {
 static void aterm_clear_screen (void)    { printf (ansi "2J" ansi "H"); }
 static void aterm_clear_to_bottom (void) { printf (ansi "J"); }
 static void aterm_home (void)            { printf (ansi "H"); }
-static void aterm_normal (void)          { printf (ansi "0m"); }
-static void aterm_reverse (void)         { printf (ansi "7m"); }
 
 enum {
     aterm_black = 0,
@@ -390,10 +388,8 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
     for (r = 0; r < rows; ++r) {
         set_color (border_colors);
         printf ("%2u", r);
-        aterm_normal ();
-        for (c = 0; c < cols; ++c) {
+        for (c = 0; c < cols; ++c)
             show_at (r, c, view, r == cursor_row && c == cursor_col);
-        }
         printf ("\r\n");
     }
     printf ("%-80.80s",
