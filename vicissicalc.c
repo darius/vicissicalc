@@ -49,8 +49,39 @@ enum {
     aterm_cyan,
     aterm_white
 };
+// (This is a macro for the sake of use in constant expressions.)
+#define aterm_bright(color)   (60 + (color))  
+
 static void aterm_set_foreground (unsigned color) {
   printf (ansi "%um", 30 + color);
+}
+static void aterm_set_background (unsigned color) {
+  printf (ansi "%um", 40 + color);
+}
+
+struct color {
+    unsigned fg;
+    unsigned bg;
+};
+static struct cell_colors {
+    struct color highlighted, unhighlighted;
+} ok_cell = {
+    .highlighted = { .fg = aterm_bright(aterm_white),
+                     .bg = aterm_bright(aterm_blue) },
+    .unhighlighted = { .fg = aterm_black,
+                       .bg = aterm_bright(aterm_white) }
+}, error_cell = {
+    .highlighted = { .fg = aterm_red, 
+                     .bg = aterm_white },
+    .unhighlighted = { .fg = aterm_black,
+                       .bg = aterm_bright(aterm_red) }
+};
+struct color border_cell = { .fg = aterm_blue,
+                             .bg = aterm_bright(aterm_yellow) };
+
+void set_color(struct color color) {
+    aterm_set_background(color.bg);
+    aterm_set_foreground(color.fg);
 }
 
 
@@ -316,9 +347,9 @@ enum { colwidth = 18 };
 
 typedef enum { formulas, values } View;
 
-static void show_at (unsigned r, unsigned c, View view) {
+static void show_at (unsigned r, unsigned c, View view, int highlight) {
     char text[1024];
-    unsigned color = aterm_black;
+    struct cell_colors *cc = &ok_cell;
     const char *formula = find_formula (cells[r][c].formula);
     if (view == formulas || !formula)
         strncpy (text, formula ? formula : cells[r][c].formula, sizeof text);
@@ -326,7 +357,7 @@ static void show_at (unsigned r, unsigned c, View view) {
         Value value;
         const char *plaint = get_value (&value, r, c);
         if (plaint) {
-            color = aterm_red;
+            cc = &error_cell;
             strncpy (text, plaint, sizeof text);
         }
         else
@@ -334,9 +365,8 @@ static void show_at (unsigned r, unsigned c, View view) {
     }
     if (colwidth < strlen (text))
         strcpy (text + colwidth - 3, "...");
-    aterm_set_foreground (color);
+    set_color (highlight ? cc->highlighted : cc->unhighlighted);
     printf (" %*s", colwidth, text);
-    aterm_set_foreground (aterm_black);
 }
 
 static const char *orelse (const char *s1, const char *s2) {
@@ -347,7 +377,7 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
     unsigned r, c;
     aterm_home ();
     printf ("%-79.79s\r\n", cells[cursor_row][cursor_col].formula);
-    aterm_reverse ();
+    set_color (border_cell);
     printf ("%s%*u",
             view == formulas ? "(formulas)" : "          ",
             (int) (colwidth - sizeof "(formulas)" + 4), 0);
@@ -355,15 +385,11 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
         printf (" %*u", colwidth, c);
     printf ("\r\n");
     for (r = 0; r < rows; ++r) {
-        aterm_reverse ();
+        set_color (border_cell);
         printf ("%2u", r);
         aterm_normal ();
         for (c = 0; c < cols; ++c) {
-            if (r == cursor_row && c == cursor_col)
-                aterm_reverse ();
-            show_at (r, c, view);
-            if (r == cursor_row && c == cursor_col)
-                aterm_normal ();
+            show_at (r, c, view, (r == cursor_row && c == cursor_col));
         }
         printf ("\r\n");
     }
@@ -435,15 +461,15 @@ static void reactor_loop (void) {
         if      (ch == ' ') enter_formula ();
         else if (ch == 'f') view = formulas;
         else if (ch == 'h') col = (col == 0 ? 0 : col-1);        // left
-        else if (ch == 'j') row = (row == 0 ? 0 : row-1);        // up
-        else if (ch == 'k') row = (row+1 == rows ? row : row+1); // down
+        else if (ch == 'j') row = (row+1 == rows ? row : row+1); // down
+        else if (ch == 'k') row = (row == 0 ? 0 : row-1);        // up
         else if (ch == 'l') col = (col+1 == cols ? col : col+1); // right
         else if (ch == 'q') break;
         else if (ch == 'v') view = values;
         else if (ch == 'w') write_file ();
         else if (ch == 'H') copy_formula (row, col == 0 ? 0 : col-1);
-        else if (ch == 'J') copy_formula (row == 0 ? 0 : row-1, col);
-        else if (ch == 'K') copy_formula (row+1 == rows ? row : row+1, col);
+        else if (ch == 'J') copy_formula (row+1 == rows ? row : row+1, col);
+        else if (ch == 'K') copy_formula (row == 0 ? 0 : row-1, col);
         else if (ch == 'L') copy_formula (row, col+1 == cols ? col : col+1);
         else                error ("Unknown key");
     }
