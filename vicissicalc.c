@@ -392,7 +392,7 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
         printf ("%2u", r);
         aterm_normal ();
         for (c = 0; c < cols; ++c) {
-            show_at (r, c, view, (r == cursor_row && c == cursor_col));
+            show_at (r, c, view, r == cursor_row && c == cursor_col);
         }
         printf ("\r\n");
     }
