@@ -59,31 +59,6 @@ static void aterm_set_background (unsigned color) {
   printf (ansi "%um", 40 + color);
 }
 
-struct color {
-    unsigned fg;
-    unsigned bg;
-};
-static struct cell_colors {
-    struct color highlighted, unhighlighted;
-} ok_cell = {
-    .highlighted = { .fg = aterm_bright(aterm_white),
-                     .bg = aterm_bright(aterm_blue) },
-    .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_bright(aterm_white) }
-}, error_cell = {
-    .highlighted = { .fg = aterm_red, 
-                     .bg = aterm_white },
-    .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_bright(aterm_red) }
-};
-struct color border_cell = { .fg = aterm_blue,
-                             .bg = aterm_bright(aterm_yellow) };
-
-void set_color(struct color color) {
-    aterm_set_background(color.bg);
-    aterm_set_foreground(color.fg);
-}
-
 
 // Evaluating expressions
 
@@ -345,11 +320,39 @@ static void read_file (void) {
 
 enum { colwidth = 18 };
 
+typedef struct Colors Colors;
+struct Colors {
+    unsigned fg, bg;
+};
+static void set_color (Colors colors) {
+    aterm_set_background (colors.bg);
+    aterm_set_foreground (colors.fg);
+}
+
+typedef struct Style Style;
+struct Style {
+    Colors unhighlighted, highlighted;
+};
+static Style ok_style = {
+    .unhighlighted = { .fg = aterm_black,
+                       .bg = aterm_bright (aterm_white) },
+    .highlighted   = { .fg = aterm_bright (aterm_white),
+                       .bg = aterm_bright (aterm_blue) }
+};
+static Style error_style = {
+    .unhighlighted = { .fg = aterm_black,
+                       .bg = aterm_bright (aterm_red) },
+    .highlighted   = { .fg = aterm_red, 
+                       .bg = aterm_white }
+};
+static Colors border_colors = { .fg = aterm_blue,
+                                .bg = aterm_bright (aterm_yellow) };
+
 typedef enum { formulas, values } View;
 
-static void show_at (unsigned r, unsigned c, View view, int highlight) {
+static void show_at (unsigned r, unsigned c, View view, int highlighted) {
     char text[1024];
-    struct cell_colors *cc = &ok_cell;
+    const Style *style = &ok_style;
     const char *formula = find_formula (cells[r][c].formula);
     if (view == formulas || !formula)
         strncpy (text, formula ? formula : cells[r][c].formula, sizeof text);
@@ -357,7 +360,7 @@ static void show_at (unsigned r, unsigned c, View view, int highlight) {
         Value value;
         const char *plaint = get_value (&value, r, c);
         if (plaint) {
-            cc = &error_cell;
+            style = &error_style;
             strncpy (text, plaint, sizeof text);
         }
         else
@@ -365,7 +368,7 @@ static void show_at (unsigned r, unsigned c, View view, int highlight) {
     }
     if (colwidth < strlen (text))
         strcpy (text + colwidth - 3, "...");
-    set_color (highlight ? cc->highlighted : cc->unhighlighted);
+    set_color (highlighted ? style->highlighted : style->unhighlighted);
     printf (" %*s", colwidth, text);
 }
 
@@ -377,7 +380,7 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
     unsigned r, c;
     aterm_home ();
     printf ("%-79.79s\r\n", cells[cursor_row][cursor_col].formula);
-    set_color (border_cell);
+    set_color (border_colors);
     printf ("%s%*u",
             view == formulas ? "(formulas)" : "          ",
             (int) (colwidth - sizeof "(formulas)" + 4), 0);
@@ -385,7 +388,7 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
         printf (" %*u", colwidth, c);
     printf ("\r\n");
     for (r = 0; r < rows; ++r) {
-        set_color (border_cell);
+        set_color (border_colors);
         printf ("%2u", r);
         aterm_normal ();
         for (c = 0; c < cols; ++c) {
