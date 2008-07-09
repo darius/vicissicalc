@@ -475,7 +475,8 @@ static void reactor_loop (void) {
 }
 
 int main (int argc, char **argv) {
-    assert (argc <= 2);
+    if (2 < argc)
+        panic ("usage: vicissicalc [filename]");
     setup ();
     if (argc == 2) {
         filename = argv[1];
