@@ -12,7 +12,8 @@ To build it:
 To run it:
    $ ./vicissicalc
 or:
-   $ ./vicissicalc filename
+   $ ./vicissicalc checkbook
+or other filename; 'checkbook' is the supplied sample spreadsheet.
 
 
 Requirements:
