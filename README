@@ -7,7 +7,7 @@ A little spreadsheet -- I've never written one before, or even really used one.
 
 
 To build it:
-   $ ./ake
+   $ CFLAGS=-lm awk -f ake
 
 To run it:
    $ ./vicissicalc
@@ -19,3 +19,22 @@ Requirements:
 
 - Building it uses awk.
 - Running it uses ANSI terminal escape codes and 'stty raw'.
+
+
+Brief user manual:
+
+- "wq" saves and quits.
+- use hjkl vi keys to move around.
+- use the space key to enter a value into a cell.
+- Numeric values must start with =, just like formulas.
+- Refer to other cells with the @ sign.  2@3 means row 2, column 3.  r
+  and c are pseudovariables for the current row and column.  =(r-1)@c
+  is a formula for the value in the cell above.
+- Copy formulas around using the uppercase J and L keys, or
+  occasionally H and K.
+- If you start it without a filename, you won't be able to save your
+  work.  So don't do that.
+- The "w" key saves your work.  "q" quits without asking if you want
+  to save unsaved changes.  So always type "wq", not just "q".
+- It looks like you can move around and edit with the arrow keys, but
+  you can't.
