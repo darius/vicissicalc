@@ -254,6 +254,11 @@ static void update (unsigned r, unsigned c) {
         cell->state = valid;
 }
 
+// Set *value to the value of the cell at (r,c), unless there's an
+// error; in which case return either the error's plaint or
+// derived_plaint -- the latter to keep from propagating a plaint
+// between cells -- we want to propagate only the fact of the error,
+// not the plaint itself.
 static const char *get_value (Value *value, unsigned r, unsigned c,
                               const char *derived_plaint) {
     if (rows <= r || cols <= c)
