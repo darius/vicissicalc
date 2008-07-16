@@ -249,21 +249,15 @@ static void update (unsigned r, unsigned c) {
 }
 
 static const char *get_value (Value *value, unsigned r, unsigned c) {
-    if (rows <= r || cols <= c) {
-        *value = 0; // XXX I think we can drop these assignments now
+    if (rows <= r || cols <= c)
         return "Cell out of range";
-    }
     Cell *cell = &cells[r][c];
     if (cell->state == unknown)
         update (r, c);
-    if (cell->state == calculating) {
-        *value = 0;
+    if (cell->state == calculating)
         return "Circular reference";
-    }
-    if (cell->state == failed) {
-        *value = 0;
+    if (cell->state == failed)
         return cell->plaint;
-    }
     assert (cell->state == valid);
     *value = cell->value;
     return NULL;
