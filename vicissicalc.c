@@ -135,9 +135,9 @@ static Value apply (Context *s, char rator, Value lhs, Value rhs) {
         case '*': return lhs * rhs;
         case '/': return rhs == 0 ? zero_divide (s) : lhs / rhs;
         case '%': return rhs == 0 ? zero_divide (s) : fmod (lhs, rhs);
-        case '^': return pow (lhs, rhs);
+        case '^': return pow (lhs, rhs); // XXX report domain errors
         case '@': {
-            Value value;
+            Value value = 0;
             const char *plaint = get_value (&value,
                                             (unsigned) lhs, (unsigned) rhs);
             if (plaint)
@@ -203,7 +203,7 @@ static void error (const char *plaint) {
 
 typedef struct Cell Cell;
 struct Cell {
-    char *formula;
+    char *text;
     enum { unknown, calculating, failed, valid } state;
     Value value;
     const char *plaint;
@@ -217,16 +217,16 @@ static void setup (void) {
     unsigned r, c;
     for (r = 0; r < rows; ++r)
         for (c = 0; c < cols; ++c) {
-            cells[r][c].formula = copy ("");
+            cells[r][c].text = copy ("");
             cells[r][c].plaint = NULL;
         }
 }
 
-static void set_formula (unsigned row, unsigned col, const char *formula) {
+static void set_text (unsigned row, unsigned col, const char *text) {
     assert (row < rows && col < cols);
-    if (cells[row][col].formula == formula) return;
-    free (cells[row][col].formula);
-    cells[row][col].formula = copy (formula);
+    if (cells[row][col].text == text) return;
+    free (cells[row][col].text);
+    cells[row][col].text = copy (text);
     unsigned r, c;
     for (r = 0; r < rows; ++r)
         for (c = 0; c < cols; ++c) {
@@ -239,7 +239,7 @@ static void update (unsigned r, unsigned c) {
     assert (r < rows && c < cols);
     Cell *cell = &cells[r][c];
     cell->state = calculating;
-    const char *plaint = evaluate (&cell->value, cell->formula, r, c);
+    const char *plaint = evaluate (&cell->value, cell->text, r, c);
     if (plaint) {
         cell->state = failed;
         cell->plaint = plaint;
@@ -250,7 +250,7 @@ static void update (unsigned r, unsigned c) {
 
 static const char *get_value (Value *value, unsigned r, unsigned c) {
     if (rows <= r || cols <= c) {
-        *value = 0;
+        *value = 0; // XXX I think we can drop these assignments now
         return "Cell out of range";
     }
     Cell *cell = &cells[r][c];
@@ -288,9 +288,9 @@ static void write_file (void) {
     unsigned r, c;
     for (r = 0; r < rows; ++r)
         for (c = 0; c < cols; ++c) {
-            const char *formula = cells[r][c].formula;
-            if (!is_blank (formula))
-                fprintf (file, "%u %u %s\n", r, c, formula);
+            const char *text = cells[r][c].text;
+            if (!is_blank (text))
+                fprintf (file, "%u %u %s\n", r, c, text);
         }
     fclose (file);
 }
@@ -302,13 +302,13 @@ static void read_file (void) {
     char line[1024];
     while (fgets (line, sizeof line, file)) {
         unsigned r, c;
-        char formula[sizeof line];
-        if (3 != sscanf (line, "%u %u %[^\n]", &r, &c, formula))
+        char text[sizeof line];
+        if (3 != sscanf (line, "%u %u %[^\n]", &r, &c, text))
             error ("Bad line in file");
         else if (rows <= r || cols <= c)
             error ("Row or column number out of range in file");
         else
-            set_formula (r, c, formula);
+            set_text (r, c, text);
     }    
     fclose (file);
 }
@@ -351,9 +351,9 @@ typedef enum { formulas, values } View;
 static void show_at (unsigned r, unsigned c, View view, int highlighted) {
     char text[1024];
     const Style *style = &ok_style;
-    const char *formula = find_formula (cells[r][c].formula);
+    const char *formula = find_formula (cells[r][c].text);
     if (view == formulas || !formula)
-        strncpy (text, formula ? formula : cells[r][c].formula, sizeof text);
+        strncpy (text, formula ? formula : cells[r][c].text, sizeof text);
     else {
         Value value;
         const char *plaint = get_value (&value, r, c);
@@ -377,7 +377,7 @@ static const char *orelse (const char *s1, const char *s2) {
 static void show (View view, unsigned cursor_row, unsigned cursor_col) {
     unsigned r, c;
     aterm_home ();
-    printf ("%-79.79s\r\n", cells[cursor_row][cursor_col].formula);
+    printf ("%-79.79s\r\n", cells[cursor_row][cursor_col].text);
     set_color (border_colors);
     printf ("%s%*u",
             view == formulas ? "(formulas)" : "          ",
@@ -439,16 +439,16 @@ static int edit_loop (void) {
     }
 }
 
-static void enter_formula (void) {
-    strncpy (input, cells[row][col].formula, sizeof input - 1);
+static void enter_text (void) {
+    strncpy (input, cells[row][col].text, sizeof input - 1);
     if (edit_loop ())
-        set_formula (row, col, input);
+        set_text (row, col, input);
     else
         error ("Aborted");
 }
 
-static void copy_formula (unsigned r, unsigned c) {
-    set_formula (r, c, cells[row][col].formula);
+static void copy_text (unsigned r, unsigned c) {
+    set_text (r, c, cells[row][col].text);
     row = r;
     col = c;
 }
@@ -457,7 +457,7 @@ static void reactor_loop (void) {
     for (;;) {
         refresh ();
         int ch = getchar ();
-        if      (ch == ' ') enter_formula ();
+        if      (ch == ' ') enter_text ();
         else if (ch == 'f') view = formulas;
         else if (ch == 'h') col = (col == 0 ? 0 : col-1);        // left
         else if (ch == 'j') row = (row+1 == rows ? row : row+1); // down
@@ -466,10 +466,10 @@ static void reactor_loop (void) {
         else if (ch == 'q') break;
         else if (ch == 'v') view = values;
         else if (ch == 'w') write_file ();
-        else if (ch == 'H') copy_formula (row, col == 0 ? 0 : col-1);
-        else if (ch == 'J') copy_formula (row+1 == rows ? row : row+1, col);
-        else if (ch == 'K') copy_formula (row == 0 ? 0 : row-1, col);
-        else if (ch == 'L') copy_formula (row, col+1 == cols ? col : col+1);
+        else if (ch == 'H') copy_text (row, col == 0 ? 0 : col-1);
+        else if (ch == 'J') copy_text (row+1 == rows ? row : row+1, col);
+        else if (ch == 'K') copy_text (row == 0 ? 0 : row-1, col);
+        else if (ch == 'L') copy_text (row, col+1 == cols ? col : col+1);
         else                error ("Unknown key");
     }
 }
