@@ -28,6 +28,10 @@ static int is_blank (const char *s) {
     return *t == '\0';
 }
 
+static const char *orelse (const char *s1, const char *s2) {
+    return s1 ? s1 : s2;
+}
+
 
 // ANSI terminal control
 
@@ -62,7 +66,8 @@ static void aterm_set_background (unsigned color) {
 
 typedef double Value;
 
-static const char *get_value (Value *value, unsigned row, unsigned column);
+static const char *get_value (Value *value, unsigned row, unsigned column,
+                              const char *derived_plaint);
 
 typedef struct Context Context;
 struct Context {
@@ -74,9 +79,9 @@ struct Context {
     const char *plaint;
 };
 
-static void complain (Context *s, const char *msg) {
+static void complain (Context *s, const char *plaint) {
     if (s->plaint == NULL) {
-        s->plaint = msg;
+        s->plaint = plaint;
         s->p += strlen (s->p);
     }
 }
@@ -138,10 +143,10 @@ static Value apply (Context *s, char rator, Value lhs, Value rhs) {
         case '^': return pow (lhs, rhs); // XXX report domain errors
         case '@': {
             Value value = 0;
-            const char *plaint = get_value (&value,
-                                            (unsigned) lhs, (unsigned) rhs);
+            unsigned r = lhs, c = rhs;
+            const char *plaint = get_value (&value, r, c, "");
             if (plaint)
-                complain (s, "");
+                complain (s, plaint);
             return value;
         }
         default: assert (0); return 0;
@@ -244,11 +249,13 @@ static void update (unsigned r, unsigned c) {
         cell->state = failed;
         cell->plaint = plaint;
         error (plaint);
-    } else
+    }
+    else
         cell->state = valid;
 }
 
-static const char *get_value (Value *value, unsigned r, unsigned c) {
+static const char *get_value (Value *value, unsigned r, unsigned c,
+                              const char *derived_plaint) {
     if (rows <= r || cols <= c)
         return "Cell out of range";
     Cell *cell = &cells[r][c];
@@ -257,7 +264,7 @@ static const char *get_value (Value *value, unsigned r, unsigned c) {
     if (cell->state == calculating)
         return "Circular reference";
     if (cell->state == failed)
-        return cell->plaint;
+      return orelse (derived_plaint, cell->plaint);
     assert (cell->state == valid);
     *value = cell->value;
     return NULL;
@@ -350,7 +357,7 @@ static void show_at (unsigned r, unsigned c, View view, int highlighted) {
         strncpy (text, formula ? formula : cells[r][c].text, sizeof text);
     else {
         Value value;
-        const char *plaint = get_value (&value, r, c);
+        const char *plaint = get_value (&value, r, c, NULL);
         if (plaint) {
             style = &error_style;
             strncpy (text, plaint, sizeof text);
@@ -362,10 +369,6 @@ static void show_at (unsigned r, unsigned c, View view, int highlighted) {
         strcpy (text + colwidth - 3, "...");
     set_color (highlighted ? style->highlighted : style->unhighlighted);
     printf (" %*s", colwidth, text);
-}
-
-static const char *orelse (const char *s1, const char *s2) {
-    return s1 ? s1 : s2;
 }
 
 static void show (View view, unsigned cursor_row, unsigned cursor_col) {

@@ -1,9 +1,3 @@
-distinguish root complaints from derived ones, so that we always and
-only display the former. perhaps the simplest way would be to have two
-get_value() functions?
-
-get circular-reference plaints to appear
-
 color-code formulas/values/labels/plaints
 
 make = a keystroke command
