@@ -1,3 +1,12 @@
+don't lose the user's work.
+two ways that can happen:
+ - they fail to write before quitting
+ - they write when they shouldn't
+
+arrow keys
+
+detect screen dimensions
+
 color-code formulas/values/labels/plaints
 
 make = a keystroke command

@@ -208,14 +208,17 @@ static void error (const char *plaint) {
 
 typedef struct Cell Cell;
 struct Cell {
-    char *text;
-    enum { unknown, calculating, failed, valid } state;
+    char *text;                 // malloced
+    const char *plaint;         // static
     Value value;
-    const char *plaint;
 };
 
-enum { rows = 20, cols = 4 };
+// These states of the plaint field have special meaning -- see update():
+static const char unknown[]     = "Unknown";
+static const char calculating[] = "Circular reference";
+#define valid                     NULL
 
+enum { rows = 20, cols = 4 };
 static Cell cells[rows][cols];
 
 static void setup (void) {
@@ -223,7 +226,7 @@ static void setup (void) {
     for (r = 0; r < rows; ++r)
         for (c = 0; c < cols; ++c) {
             cells[r][c].text = copy ("");
-            cells[r][c].plaint = NULL;
+            cells[r][c].plaint = unknown;
         }
 }
 
@@ -234,24 +237,17 @@ static void set_text (unsigned row, unsigned col, const char *text) {
     cells[row][col].text = copy (text);
     unsigned r, c;
     for (r = 0; r < rows; ++r)
-        for (c = 0; c < cols; ++c) {
-            cells[r][c].state = unknown;
-            cells[r][c].plaint = NULL;
-        }
+        for (c = 0; c < cols; ++c)
+            cells[r][c].plaint = unknown;
 }
 
 static void update (unsigned r, unsigned c) {
     assert (r < rows && c < cols);
     Cell *cell = &cells[r][c];
-    cell->state = calculating;
-    const char *plaint = evaluate (&cell->value, cell->text, r, c);
-    if (plaint) {
-        cell->state = failed;
-        cell->plaint = plaint;
-        error (plaint);
-    }
-    else
-        cell->state = valid;
+    cell->plaint = calculating;
+    cell->plaint = evaluate (&cell->value, cell->text, r, c);
+    if (cell->plaint)
+        error (cell->plaint);
 }
 
 // Set *value to the value of the cell at (r,c), unless there's an
@@ -264,13 +260,12 @@ static const char *get_value (Value *value, unsigned r, unsigned c,
     if (rows <= r || cols <= c)
         return "Cell out of range";
     Cell *cell = &cells[r][c];
-    if (cell->state == unknown)
+    if (cell->plaint == unknown)
         update (r, c);
-    if (cell->state == calculating)
-        return "Circular reference";
-    if (cell->state == failed)
-      return orelse (derived_plaint, cell->plaint);
-    assert (cell->state == valid);
+    if (cell->plaint == calculating)
+        return calculating;
+    if (cell->plaint)
+        return orelse (derived_plaint, cell->plaint);
     *value = cell->value;
     return NULL;
 }
@@ -394,9 +389,9 @@ static void show (View view, unsigned cursor_row, unsigned cursor_col) {
             show_at (r, c, view, r == cursor_row && c == cursor_col);
         printf ("\r\n");
     }
-    printf ("%-80.80s",
-            orelse (the_plaint,
-                    orelse (cells[cursor_row][cursor_col].plaint, "")));
+    const char *cell_plaint = cells[cursor_row][cursor_col].plaint;
+    if (cell_plaint == unknown) cell_plaint = NULL;
+    printf ("%-80.80s", orelse (the_plaint, orelse (cell_plaint, "")));
     the_plaint = NULL;
     aterm_clear_to_bottom ();
 }
