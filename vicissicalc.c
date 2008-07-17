@@ -339,15 +339,15 @@ struct Style {
 };
 static Style ok_style = {
     .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_bright (aterm_white) },
+                       .bg = aterm_white },
     .highlighted   = { .fg = aterm_bright (aterm_white),
                        .bg = aterm_bright (aterm_blue) }
 };
 static Style error_style = {
     .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_bright (aterm_red) },
-    .highlighted   = { .fg = aterm_red, 
-                       .bg = aterm_white }
+                       .bg = aterm_bright (aterm_cyan) },
+    .highlighted   = { .fg = aterm_bright (aterm_white), 
+                       .bg = aterm_bright (aterm_red) }
 };
 static Colors border_colors = { .fg = aterm_blue,
                                 .bg = aterm_bright (aterm_yellow) };
