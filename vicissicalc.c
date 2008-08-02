@@ -209,7 +209,7 @@ static void error (const char *plaint) {
 typedef struct Cell Cell;
 struct Cell {
     char *text;                 // malloced
-    const char *plaint;         // static
+    const char *plaint;         // in static memory
     Value value;
 };
 
