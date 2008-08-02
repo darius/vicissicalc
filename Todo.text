@@ -1,23 +1,26 @@
 don't lose the user's work.
 two ways that can happen:
  - they fail to write before quitting
+   - so write a '.unsaved' file on exit
  - they write when they shouldn't
+   - so keep at least one older version around
+also, give more feedback -- messages -- on writing
 
 arrow keys
 
-detect screen dimensions
-
-color-code formulas/values/labels/plaints
-
+when editing a cell: left and right arrow, C-a, C-e, clear
 make = a keystroke command
-left and right arrow, C-a, C-e -- during editing
+
+grid bigger than the screen
+
+aggregates over cell ranges
+
+detect screen dimensions
 
 let overwide cell display overflow into any empty cells adjacent to
 the right
 
-aggregates over cell ranges
-
-grid bigger than the screen
+color-code formulas/values/labels/plaints
 
 highlight and navigate dependents/dependencies of the current cell
 
