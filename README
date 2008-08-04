@@ -7,7 +7,7 @@ A little spreadsheet -- I've never written one before, or even really used one.
 
 
 To build it:
-   $ CFLAGS=-lm awk -f ake
+   $ ./build
 
 To run it:
    $ ./vicissicalc
@@ -18,7 +18,7 @@ or other filename; 'checkbook' is the supplied sample spreadsheet.
 
 Requirements:
 
-- Building it uses awk.
+- Building it uses Awk and Bash.
 - Running it uses ANSI terminal escape codes and 'stty raw'.
 
 
