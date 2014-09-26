@@ -55,10 +55,10 @@ enum {
 #define aterm_bright(color)   (60 + (color))  
 
 static void aterm_set_foreground (unsigned color) {
-  printf (ansi "%um", 30 + color);
+    printf (ansi "%um", 30 + color);
 }
 static void aterm_set_background (unsigned color) {
-  printf (ansi "%um", 40 + color);
+    printf (ansi "%um", 40 + color);
 }
 
 
