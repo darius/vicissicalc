@@ -7,10 +7,42 @@
 #include <string.h>
 
 
-// Utilities
+// ANSI terminal control
+
+#define ansi "\x1b["
+
+static void aterm_clear_screen(void)    { printf(ansi "2J" ansi "H"); }
+static void aterm_clear_to_bottom(void) { printf(ansi "J"); }
+static void aterm_home(void)            { printf(ansi "H"); }
+static void aterm_newline(void)         { printf(ansi "K\r\n"); }
+
+static void aterm_reset(void)           { printf("\x1b" "c"); fflush(stdout); }
+
+static void aterm_set_foreground(unsigned color) {
+    printf(ansi "%um", 30 + color);
+}
+static void aterm_set_background(unsigned color) {
+    printf(ansi "%um", 40 + color);
+}
+
+// Colors. This is a macro for the sake of use in constant expressions:
+#define aterm_bright(color)   (60 + (color))  
+enum {
+    aterm_black = 0,
+    aterm_red,
+    aterm_green,
+    aterm_yellow,
+    aterm_blue,
+    aterm_magenta,
+    aterm_cyan,
+    aterm_white
+};
+
+
+ // Utilities
 
 static void panic(const char *plaint) {
-    system("stty sane");
+    system("stty sane"); aterm_reset();
     fprintf(stderr, "%s\n", plaint);
     exit(1);
 }
@@ -30,35 +62,6 @@ static int is_blank(const char *s) {
 
 static const char *orelse(const char *s1, const char *s2) {
     return s1 ? s1 : s2;
-}
-
-
-// ANSI terminal control
-
-#define ansi "\x1b["
-
-static void aterm_clear_screen(void)    { printf(ansi "2J" ansi "H"); }
-static void aterm_clear_to_bottom(void) { printf(ansi "J"); }
-static void aterm_home(void)            { printf(ansi "H"); }
-
-enum {
-    aterm_black = 0,
-    aterm_red,
-    aterm_green,
-    aterm_yellow,
-    aterm_blue,
-    aterm_magenta,
-    aterm_cyan,
-    aterm_white
-};
-// (This is a macro for the sake of use in constant expressions.)
-#define aterm_bright(color)   (60 + (color))  
-
-static void aterm_set_foreground(unsigned color) {
-    printf(ansi "%um", 30 + color);
-}
-static void aterm_set_background(unsigned color) {
-    printf(ansi "%um", 40 + color);
 }
 
 
@@ -296,7 +299,7 @@ static void write_file(void) {
 static void read_file(void) {
     assert(filename);
     FILE *file = fopen(filename, "r");
-    if (!file) return;
+    if (!file) return;  // XXX complain
     char line[1024];
     while (fgets(line, sizeof line, file)) {
         unsigned r, c;
@@ -370,20 +373,22 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
 
 static void show(View view, unsigned cursor_row, unsigned cursor_col) {
     aterm_home();
-    printf("%-79.79s\r\n", cells[cursor_row][cursor_col].text);
+    set_color(ok_style.unhighlighted);
+    printf("%-79.79s", cells[cursor_row][cursor_col].text);
+    aterm_newline();
     set_color(border_colors);
     printf("%s%*u",
            view == formulas ? "(formulas)" : "          ",
            (int) (colwidth - sizeof "(formulas)" + 4), 0);
     for (unsigned c = 1; c < cols; ++c)
         printf(" %*u", colwidth, c);
-    printf("\r\n");
+    aterm_newline();
     for (unsigned r = 0; r < rows; ++r) {
         set_color(border_colors);
         printf("%2u", r);
         for (unsigned c = 0; c < cols; ++c)
             show_at(r, c, view, r == cursor_row && c == cursor_col);
-        printf("\r\n");
+        aterm_newline();
     }
     const char *cell_plaint = cells[cursor_row][cursor_col].plaint;
     if (cell_plaint == unknown) cell_plaint = NULL;
@@ -478,6 +483,6 @@ int main(int argc, char **argv) {
     system("stty raw");
     aterm_clear_screen();
     reactor_loop();
-    system("stty sane");
+    system("stty sane"); aterm_reset();
     return 0;
 }
