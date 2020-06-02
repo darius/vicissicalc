@@ -222,9 +222,8 @@ enum { rows = 20, cols = 4 };
 static Cell cells[rows][cols];
 
 static void setup(void) {
-    unsigned r, c;
-    for (r = 0; r < rows; ++r)
-        for (c = 0; c < cols; ++c) {
+    for (unsigned r = 0; r < rows; ++r)
+        for (unsigned c = 0; c < cols; ++c) {
             cells[r][c].text = copy("");
             cells[r][c].plaint = unknown;
         }
@@ -235,9 +234,8 @@ static void set_text(unsigned row, unsigned col, const char *text) {
     if (cells[row][col].text == text) return;
     free(cells[row][col].text);
     cells[row][col].text = copy(text);
-    unsigned r, c;
-    for (r = 0; r < rows; ++r)
-        for (c = 0; c < cols; ++c)
+    for (unsigned r = 0; r < rows; ++r)
+        for (unsigned c = 0; c < cols; ++c)
             cells[r][c].plaint = unknown;
 }
 
@@ -286,9 +284,8 @@ static void write_file(void) {
     assert(filename);
     FILE *file = open_file(filename, "w");
     if (!file) return;
-    unsigned r, c;
-    for (r = 0; r < rows; ++r)
-        for (c = 0; c < cols; ++c) {
+    for (unsigned r = 0; r < rows; ++r)
+        for (unsigned c = 0; c < cols; ++c) {
             const char *text = cells[r][c].text;
             if (!is_blank(text))
                 fprintf(file, "%u %u %s\n", r, c, text);
@@ -372,20 +369,19 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
 }
 
 static void show(View view, unsigned cursor_row, unsigned cursor_col) {
-    unsigned r, c;
     aterm_home();
     printf("%-79.79s\r\n", cells[cursor_row][cursor_col].text);
     set_color(border_colors);
     printf("%s%*u",
            view == formulas ? "(formulas)" : "          ",
            (int) (colwidth - sizeof "(formulas)" + 4), 0);
-    for (c = 1; c < cols; ++c)
+    for (unsigned c = 1; c < cols; ++c)
         printf(" %*u", colwidth, c);
     printf("\r\n");
-    for (r = 0; r < rows; ++r) {
+    for (unsigned r = 0; r < rows; ++r) {
         set_color(border_colors);
         printf("%2u", r);
-        for (c = 0; c < cols; ++c)
+        for (unsigned c = 0; c < cols; ++c)
             show_at(r, c, view, r == cursor_row && c == cursor_col);
         printf("\r\n");
     }
