@@ -67,7 +67,7 @@ static void aterm_set_background(unsigned color) {
 typedef double Value;
 
 static const char *get_value(Value *value, unsigned row, unsigned column,
-                              const char *derived_plaint);
+                             const char *derived_plaint);
 
 typedef struct Context Context;
 struct Context {
@@ -181,7 +181,7 @@ static const char *find_formula(const char *s) {
 }
 
 static const char *evaluate(Value *result, 
-                             const char *expression, unsigned r, unsigned c) {
+                            const char *expression, unsigned r, unsigned c) {
     Context context;
     context.plaint = NULL;
     context.p = find_formula(expression);
@@ -256,7 +256,7 @@ static void update(unsigned r, unsigned c) {
 // between cells -- we want to propagate only the fact of the error,
 // not the plaint itself.
 static const char *get_value(Value *value, unsigned r, unsigned c,
-                              const char *derived_plaint) {
+                             const char *derived_plaint) {
     if (rows <= r || cols <= c)
         return "Cell out of range";
     Cell *cell = &cells[r][c];
