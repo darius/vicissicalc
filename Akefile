@@ -1,6 +1,0 @@
-all: vicissicalc
-
-vicissicalc: vicissicalc.o
-
-clean:
-	rm -f *.o vicissicalc

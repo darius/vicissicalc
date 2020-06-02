@@ -1,18 +1,5 @@
 #!/bin/bash
+# Compile Vicissicalc
 
-# Build this project from Akefile using ake, first installing ake if
-# necessary.
-
-# You may want to configure CFLAGS yourself.
-export CFLAGS='-lm -g2 -Wall -W'
-
-# (Isn't there any Bash expression for "NOT -x ake"? I couldn't find any...)
-if [ -x ake ]
-then
-    echo -n    # (An actual command seems syntactically required here)
-else
-    (curl 'https://raw.githubusercontent.com/darius/ake/master/ake' -o ake &&
-     chmod +x ake) || exit 1
-fi
-
-awk -f ./ake "$@"
+export CFLAGS='-g2 -Wall -W'
+cc $CFLAGS vicissicalc.c -o vicissicalc -lm
