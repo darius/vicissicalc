@@ -48,7 +48,7 @@ static void panic(const char *plaint) {
 }
 
 // Really strdup, but that name may be taken.
-static char *copy(const char *s) {
+static char *dupe(const char *s) {
     char *result = malloc(strlen(s) + 1);
     if (!result) panic("Out of memory");
     strcpy(result, s);
@@ -227,7 +227,7 @@ static Cell cells[rows][cols];
 static void setup(void) {
     for (unsigned r = 0; r < rows; ++r)
         for (unsigned c = 0; c < cols; ++c) {
-            cells[r][c].text = copy("");
+            cells[r][c].text = dupe("");
             cells[r][c].plaint = unknown;
         }
 }
@@ -236,7 +236,7 @@ static void set_text(unsigned row, unsigned col, const char *text) {
     assert(row < rows && col < cols);
     if (cells[row][col].text == text) return;
     free(cells[row][col].text);
-    cells[row][col].text = copy(text);
+    cells[row][col].text = dupe(text);
     for (unsigned r = 0; r < rows; ++r)
         for (unsigned c = 0; c < cols; ++c)
             cells[r][c].plaint = unknown;
