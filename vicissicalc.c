@@ -47,6 +47,18 @@ static void panic(const char *plaint) {
     exit(1);
 }
 
+// Copy into dest as much of `s` as will fit.
+// strncpy won't do because it can leave dest unterminated.
+static void stuff(char *dest, size_t dest_size, const char *s) {
+    assert(0 < dest_size);
+    size_t i;
+    for (i = 0; i < dest_size-1; ++i) {
+        if (!s[i]) break;
+        dest[i] = s[i];
+    }
+    dest[i] = 0;
+}
+
 // Really strdup, but that name may be taken.
 static char *dupe(const char *s) {
     char *result = malloc(strlen(s) + 1);
@@ -354,13 +366,13 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
     const Style *style = &ok_style;
     const char *formula = find_formula(cells[r][c].text);
     if (view == formulas || !formula)
-        strncpy(text, formula ? formula : cells[r][c].text, sizeof text);
+        stuff(text, sizeof text, formula ? formula : cells[r][c].text);
     else {
         Value value;
         const char *plaint = get_value(&value, r, c, NULL);
         if (plaint) {
             style = &error_style;
-            strncpy(text, plaint, sizeof text);
+            stuff(text, sizeof text, plaint);
         }
         else
             snprintf(text, sizeof text, "%*g", colwidth, value);
@@ -438,7 +450,7 @@ static int edit_loop(void) {
 }
 
 static void enter_text(void) {
-    strncpy(input, cells[row][col].text, sizeof input - 1);
+    stuff(input, sizeof input, cells[row][col].text);
     if (edit_loop())
         set_text(row, col, input);
     else
