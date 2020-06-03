@@ -468,13 +468,12 @@ static void reactor_loop(void) {
         refresh();
         int k = getchar();
         if      (k == ' ') enter_text();
-        else if (k == 'f') view = formulas;
+        else if (k == 'f') view = (view == formulas ? values : formulas);
         else if (k == 'h') col = max(col-1, 0);       // left
         else if (k == 'j') row = min(row+1, rows-1);  // down
         else if (k == 'k') row = max(row-1, 0);       // up
         else if (k == 'l') col = min(col+1, cols-1);  // right
         else if (k == 'q') break;
-        else if (k == 'v') view = values;
         else if (k == 'w') write_file();
         else if (k == 'H') copy_text(row,                max(col-1, 0));
         else if (k == 'J') copy_text(min(row+1, rows-1), col);

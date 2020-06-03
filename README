@@ -39,5 +39,4 @@ Brief user manual:
   to save unsaved changes.  So always type "wq", not just "q".
 - It looks like you can move around and edit with the arrow keys, but
   you can't.
-- View all the cell formulas with the "f" key; switch back to seeing
-  cell values with "v".
+- The "f" key toggles whether you see cell formulas or cell values.
