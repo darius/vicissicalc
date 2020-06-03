@@ -76,6 +76,9 @@ static const char *orelse(const char *s1, const char *s2) {
     return s1 ? s1 : s2;
 }
 
+static int min(int x, int y) { return x < y ? x : y; }
+static int max(int x, int y) { return x > y ? x : y; }
+
 
 // Evaluating expressions
 
@@ -366,7 +369,7 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
     const Style *style = &ok_style;
     const char *formula = find_formula(cells[r][c].text);
     if (view == formulas || !formula)
-        stuff(text, sizeof text, formula ? formula : cells[r][c].text);
+        stuff(text, sizeof text, orelse(formula, cells[r][c].text));
     else {
         Value value;
         const char *plaint = get_value(&value, r, c, NULL);
@@ -413,8 +416,8 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
 // Main program
 
 static View view = values;
-static unsigned row = 0;
-static unsigned col = 0;
+static int row = 0;
+static int col = 0;
 
 static void refresh(void) {
     show(view, row, col);
@@ -442,7 +445,7 @@ static int edit_loop(void) {
             if (0 < p)
                 input[--p] = '\0';
         }
-        else if (p + 1 < sizeof input) {
+        else if (isprint(c) && p + 1 < sizeof input) {
             input[p++] = c;
             input[p] = '\0';
         }
@@ -469,17 +472,17 @@ static void reactor_loop(void) {
         int ch = getchar();
         if      (ch == ' ') enter_text();
         else if (ch == 'f') view = formulas;
-        else if (ch == 'h') col = (col == 0 ? 0 : col-1);        // left
-        else if (ch == 'j') row = (row+1 == rows ? row : row+1); // down
-        else if (ch == 'k') row = (row == 0 ? 0 : row-1);        // up
-        else if (ch == 'l') col = (col+1 == cols ? col : col+1); // right
+        else if (ch == 'h') col = max(col-1, 0);       // left
+        else if (ch == 'j') row = min(row+1, rows-1);  // down
+        else if (ch == 'k') row = max(row-1, 0);       // up
+        else if (ch == 'l') col = min(col+1, cols-1);  // right
         else if (ch == 'q') break;
         else if (ch == 'v') view = values;
         else if (ch == 'w') write_file();
-        else if (ch == 'H') copy_text(row, col == 0 ? 0 : col-1);
-        else if (ch == 'J') copy_text(row+1 == rows ? row : row+1, col);
-        else if (ch == 'K') copy_text(row == 0 ? 0 : row-1, col);
-        else if (ch == 'L') copy_text(row, col+1 == cols ? col : col+1);
+        else if (ch == 'H') copy_text(row,                max(col-1, 0));
+        else if (ch == 'J') copy_text(min(row+1, rows-1), col);
+        else if (ch == 'K') copy_text(max(row-1, 0),      col);
+        else if (ch == 'L') copy_text(row,                min(col+1, cols-1));
         else                error("Unknown key");
     }
 }
