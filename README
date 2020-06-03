@@ -1,5 +1,5 @@
 Vicissicalc
-Copyright (c) 2008 by Darius Bacon <darius@wry.me>
+Copyright (c) 2008,2020 by Darius Bacon <darius@wry.me>
 Distributed under GNU General Public Licence v3
 http://www.gnu.org/licenses/gpl.html
 
@@ -18,7 +18,7 @@ or other filename; 'checkbook' is the supplied sample spreadsheet.
 
 Requirements:
 
-- Building it uses Awk and Bash.
+- Building it uses sh and C.
 - Running it uses ANSI terminal escape codes and 'stty raw'.
 
 

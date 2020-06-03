@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 # Compile Vicissicalc
 
-export CFLAGS='-g2 -Wall -W -std=c99'
+CFLAGS='-g2 -Wall -W -std=c99'
 cc $CFLAGS vicissicalc.c -o vicissicalc -lm
