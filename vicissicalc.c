@@ -9,20 +9,22 @@
 
 // ANSI terminal control
 
-#define ansi "\x1b["
+#define ANSI "\x1b["
 
-static void aterm_clear_screen(void)    { printf(ansi "2J" ansi "H"); }
-static void aterm_clear_to_bottom(void) { printf(ansi "J"); }
-static void aterm_home(void)            { printf(ansi "H"); }
-static void aterm_newline(void)         { printf(ansi "K\r\n"); }
+#define CLEAR_LINE_RIGHT ANSI "K"
+
+static void aterm_clear_screen(void)    { printf(ANSI "2J" ANSI "H"); }
+static void aterm_clear_to_bottom(void) { printf(ANSI "J"); }
+static void aterm_home(void)            { printf(ANSI "H"); }
+static void aterm_newline(void)         { printf(CLEAR_LINE_RIGHT "\r\n"); }
 
 static void aterm_reset(void)           { printf("\x1b" "c"); fflush(stdout); }
 
 static void aterm_set_foreground(unsigned color) {
-    printf(ansi "%um", 30 + color);
+    printf(ANSI "%um", 30 + color);
 }
 static void aterm_set_background(unsigned color) {
-    printf(ansi "%um", 40 + color);
+    printf(ANSI "%um", 40 + color);
 }
 
 // Colors. This is a macro for the sake of use in constant expressions:
@@ -413,7 +415,7 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
 }
 
 
-// Main program
+// Interaction and main program
 
 static View view = values;
 static int row = 0;
@@ -425,17 +427,11 @@ static void refresh(void) {
 
 static char input[81];
 
-static void show_input(void) {
-    refresh();
-    printf("? %s", input);
-    fflush(stdout);
-}
-
 // Return true iff the user commits a change.
 static int edit_loop(void) {
     size_t p = strlen(input);
     for (;;) {
-        show_input();
+        printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
         int c = getchar();
         if (c == '\r' || c == EOF)
             return 1;
@@ -445,9 +441,10 @@ static int edit_loop(void) {
             if (0 < p)
                 input[--p] = '\0';
         }
-        else if (isprint(c) && p + 1 < sizeof input) {
+        else if (isprint(c) && p+1 < sizeof input) {
             input[p++] = c;
             input[p] = '\0';
+            putchar(c); fflush(stdout);
         }
     }
 }
@@ -469,21 +466,21 @@ static void copy_text(unsigned r, unsigned c) {
 static void reactor_loop(void) {
     for (;;) {
         refresh();
-        int ch = getchar();
-        if      (ch == ' ') enter_text();
-        else if (ch == 'f') view = formulas;
-        else if (ch == 'h') col = max(col-1, 0);       // left
-        else if (ch == 'j') row = min(row+1, rows-1);  // down
-        else if (ch == 'k') row = max(row-1, 0);       // up
-        else if (ch == 'l') col = min(col+1, cols-1);  // right
-        else if (ch == 'q') break;
-        else if (ch == 'v') view = values;
-        else if (ch == 'w') write_file();
-        else if (ch == 'H') copy_text(row,                max(col-1, 0));
-        else if (ch == 'J') copy_text(min(row+1, rows-1), col);
-        else if (ch == 'K') copy_text(max(row-1, 0),      col);
-        else if (ch == 'L') copy_text(row,                min(col+1, cols-1));
-        else                error("Unknown key");
+        int k = getchar();
+        if      (k == ' ') enter_text();
+        else if (k == 'f') view = formulas;
+        else if (k == 'h') col = max(col-1, 0);       // left
+        else if (k == 'j') row = min(row+1, rows-1);  // down
+        else if (k == 'k') row = max(row-1, 0);       // up
+        else if (k == 'l') col = min(col+1, cols-1);  // right
+        else if (k == 'q') break;
+        else if (k == 'v') view = values;
+        else if (k == 'w') write_file();
+        else if (k == 'H') copy_text(row,                max(col-1, 0));
+        else if (k == 'J') copy_text(min(row+1, rows-1), col);
+        else if (k == 'K') copy_text(max(row-1, 0),      col);
+        else if (k == 'L') copy_text(row,                min(col+1, cols-1));
+        else               error("Unknown key");
     }
 }
 
@@ -495,7 +492,7 @@ int main(int argc, char **argv) {
         filename = argv[1];
         read_file();
     }
-    system("stty raw");
+    system("stty raw -echo");
     aterm_clear_screen();
     reactor_loop();
     system("stty sane"); aterm_reset();
