@@ -161,10 +161,8 @@ static Value apply(Context *s, char rator, Value lhs, Value rhs) {
         case '^': return pow(lhs, rhs); // XXX report domain errors
         case '@': {
             Value value = 0;
-            unsigned r = lhs, c = rhs;
-            const char *plaint = get_value(&value, r, c, "");
-            if (plaint)
-                complain(s, plaint);
+            const char *plaint = get_value(&value, lhs, rhs, "");
+            if (plaint) complain(s, plaint);
             return value;
         }
         default: assert(0); return 0;
