@@ -54,10 +54,8 @@ static void panic(const char *plaint) {
 static void stuff(char *dest, size_t dest_size, const char *s) {
     assert(0 < dest_size);
     size_t i;
-    for (i = 0; i < dest_size-1; ++i) {
-        if (!s[i]) break;
-        dest[i] = s[i];
-    }
+    for (i = 0; i < dest_size-1; ++i)
+        if ((dest[i] = s[i]) == 0) return;
     dest[i] = 0;
 }
 
