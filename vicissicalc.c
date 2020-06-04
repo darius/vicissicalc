@@ -234,7 +234,6 @@ struct Cell {
 // These states of the plaint field have special meaning -- see update():
 static const char unknown[]     = "Unknown";
 static const char calculating[] = "Circular reference";
-#define valid                     NULL
 
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
@@ -262,8 +261,7 @@ static void update(unsigned r, unsigned c) {
     Cell *cell = &cells[r][c];
     cell->plaint = calculating;
     cell->plaint = evaluate(&cell->value, cell->text, r, c);
-    if (cell->plaint)
-        error(cell->plaint);
+    error(cell->plaint);
 }
 
 // Set *value to the value of the cell at(r,c), unless there's an
@@ -408,7 +406,6 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
     const char *cell_plaint = cells[cursor_row][cursor_col].plaint;
     if (cell_plaint == unknown) cell_plaint = NULL;
     printf("%-80.80s", orelse(the_plaint, orelse(cell_plaint, "")));
-    the_plaint = NULL;
     aterm_clear_to_bottom();
 }
 
@@ -481,6 +478,7 @@ static int col = 0;
 
 static void refresh(void) {
     show(view, row, col);
+    the_plaint = NULL;
 }
 
 static char input[81];
@@ -490,19 +488,19 @@ static int edit_loop(void) {
     size_t p = strlen(input);
     for (;;) {
         printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
-        int k = get_key();
-        if (k == '\r' || k == EOF)
+        int key = get_key();
+        if (key == '\r' || key == EOF)
             return 1;
-        else if (k == 7) // C-g
+        else if (key == 7) // C-g
             return 0;
-        else if (k == '\b' || k == 127) { // backspace
+        else if (key == '\b' || key == 127) { // backspace
             if (0 < p)
                 input[--p] = '\0';
         }
-        else if (isprint(k) && p+1 < sizeof input) {
-            input[p++] = k;
+        else if (isprint(key) && p+1 < sizeof input) {
+            input[p++] = key;
             input[p] = '\0';
-            putchar(k); fflush(stdout);
+            putchar(key); fflush(stdout);
         }
     }
 }
@@ -521,36 +519,34 @@ static void copy_text(unsigned r, unsigned c) {
     col = c;
 }
 
+static void react(int key) {
+    switch (key) {
+    case ' ': enter_text(); break;
+
+    case 'w': write_file(); break;
+
+    case 'f': view = (view == formulas ? values : formulas); break;
+
+    case key_left:  col = max(col-1, 0);       break;
+    case key_right: col = min(col+1, ncols-1); break;
+    case key_down:  row = min(row+1, nrows-1); break;
+    case key_up:    row = max(row-1, 0);       break;
+
+    case key_ctrl|key_left:  copy_text(row,         max(col-1, 0));       break;
+    case key_ctrl|key_right: copy_text(row,         min(col+1, ncols-1)); break;
+    case key_ctrl|key_down:  copy_text(min(row+1, nrows-1), col);         break;
+    case key_ctrl|key_up:    copy_text(max(row-1, 0),       col);         break;
+
+    default:  error("Unknown key");
+    }
+}
+
 static void reactor_loop(void) {
     for (;;) {
         refresh();
-        int k = get_key();
-        switch (k) {
-
-        case 'q': return;
-
-        case ' ': enter_text(); break;
-
-        case 'w': write_file(); break;
-
-        case 'f': view = (view == formulas ? values : formulas); break;
-
-        case key_left:  col = max(col-1, 0);       break;
-        case key_right: col = min(col+1, ncols-1); break;
-        case key_down:  row = min(row+1, nrows-1); break;
-        case key_up:    row = max(row-1, 0);       break;
-
-        case key_ctrl|key_left:  copy_text(row,         max(col-1, 0));
-                                 break;
-        case key_ctrl|key_right: copy_text(row,         min(col+1, ncols-1));
-                                 break;
-        case key_ctrl|key_down:  copy_text(min(row+1, nrows-1), col);
-                                 break;
-        case key_ctrl|key_up:    copy_text(max(row-1, 0),       col);
-                                 break;
-
-        default:  error("Unknown key");
-        }
+        int key = get_key();
+        if (key == 'q') return;
+        react(key);
     }
 }
 
