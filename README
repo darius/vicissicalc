@@ -31,8 +31,7 @@ Brief user manual:
 - Refer to other cells with the @ sign.  2@3 means row 2, column 3.  r
   and c are pseudovariables for the current row and column.  =(r-1)@c
   is a formula for the value in the cell above.
-- Copy formulas around using the uppercase J and L keys, or
-  occasionally H and K.
+- Copy formulas to neighboring cells using the ctrl-arrow key-chords.
 - If you start it without a filename, you won't be able to save your
   work.  So don't do that.
 - The "w" key saves your work.  "q" quits without asking if you want

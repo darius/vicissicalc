@@ -424,19 +424,24 @@ enum {
     key_left,
     key_right,
     key_unknown,
+    key_shift = 1<<0,   // Key-chord modifier bits for non-ASCII keys
+    key_alt   = 1<<1,
+    key_ctrl  = 1<<2,
 };
 
 static int weirdo(int last_key) {
     return last_key == EOF ? EOF : key_unknown;
 }
 
-static int modify(int m1, int n1, int key) {
+static int chord(int m1, int n1, int key) {
     if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
         return weirdo(key);
-    int m = m1-1, n = n1-1;
-    if (m == 0 && n == 0)
-        return key;
-    return weirdo(key); // XXX handle chords
+    int m_bits = m1-1, n_bits = n1-1;
+    if (m_bits != 0) return weirdo(key);
+    if (n_bits != 0)
+        assert(1024 <= key); // (modifier codes only go with non-ASCII keys)
+    // TODO for the Home key this would need adjustment:
+    return key | n_bits;
 }
 
 static int get_key(void) {
@@ -461,10 +466,10 @@ static int get_key(void) {
     }
     // Now k is the last character of the above sequence.
     switch (k) {
-    case 'A': return modify(m1, n1, key_up);
-    case 'B': return modify(m1, n1, key_down);
-    case 'C': return modify(m1, n1, key_right);
-    case 'D': return modify(m1, n1, key_left);
+    case 'A': return chord(m1, n1, key_up);
+    case 'B': return chord(m1, n1, key_down);
+    case 'C': return chord(m1, n1, key_right);
+    case 'D': return chord(m1, n1, key_left);
     default:  return weirdo(k);
     }
 }
@@ -532,15 +537,19 @@ static void reactor_loop(void) {
 
         case 'f': view = (view == formulas ? values : formulas); break;
 
-        case key_left:  case 'h': col = max(col-1, 0);       break;
-        case key_right: case 'l': col = min(col+1, ncols-1); break;
-        case key_down:  case 'j': row = min(row+1, nrows-1); break;
-        case key_up:    case 'k': row = max(row-1, 0);       break;
+        case key_left:  col = max(col-1, 0);       break;
+        case key_right: col = min(col+1, ncols-1); break;
+        case key_down:  row = min(row+1, nrows-1); break;
+        case key_up:    row = max(row-1, 0);       break;
 
-        case 'H': copy_text(row,                max(col-1, 0));       break;
-        case 'L': copy_text(row,                min(col+1, ncols-1)); break;
-        case 'J': copy_text(min(row+1, nrows-1), col);                break;
-        case 'K': copy_text(max(row-1, 0),      col);                 break;
+        case key_ctrl|key_left:  copy_text(row,         max(col-1, 0));
+                                 break;
+        case key_ctrl|key_right: copy_text(row,         min(col+1, ncols-1));
+                                 break;
+        case key_ctrl|key_down:  copy_text(min(row+1, nrows-1), col);
+                                 break;
+        case key_ctrl|key_up:    copy_text(max(row-1, 0),       col);
+                                 break;
 
         default:  error("Unknown key");
         }
