@@ -238,29 +238,29 @@ static const char unknown[]     = "Unknown";
 static const char calculating[] = "Circular reference";
 #define valid                     NULL
 
-enum { rows = 20, cols = 4 };
-static Cell cells[rows][cols];
+enum { nrows = 20, ncols = 4 };
+static Cell cells[nrows][ncols];
 
 static void setup(void) {
-    for (unsigned r = 0; r < rows; ++r)
-        for (unsigned c = 0; c < cols; ++c) {
+    for (unsigned r = 0; r < nrows; ++r)
+        for (unsigned c = 0; c < ncols; ++c) {
             cells[r][c].text = dupe("");
             cells[r][c].plaint = unknown;
         }
 }
 
 static void set_text(unsigned row, unsigned col, const char *text) {
-    assert(row < rows && col < cols);
+    assert(row < nrows && col < ncols);
     if (cells[row][col].text == text) return;
     free(cells[row][col].text);
     cells[row][col].text = dupe(text);
-    for (unsigned r = 0; r < rows; ++r)
-        for (unsigned c = 0; c < cols; ++c)
+    for (unsigned r = 0; r < nrows; ++r)
+        for (unsigned c = 0; c < ncols; ++c)
             cells[r][c].plaint = unknown;
 }
 
 static void update(unsigned r, unsigned c) {
-    assert(r < rows && c < cols);
+    assert(r < nrows && c < ncols);
     Cell *cell = &cells[r][c];
     cell->plaint = calculating;
     cell->plaint = evaluate(&cell->value, cell->text, r, c);
@@ -275,7 +275,7 @@ static void update(unsigned r, unsigned c) {
 // not the plaint itself.
 static const char *get_value(Value *value, unsigned r, unsigned c,
                              const char *derived_plaint) {
-    if (rows <= r || cols <= c)
+    if (nrows <= r || ncols <= c)
         return "Cell out of range";
     Cell *cell = &cells[r][c];
     if (cell->plaint == unknown)
@@ -304,8 +304,8 @@ static void write_file(void) {
     assert(filename);
     FILE *file = open_file(filename, "w");
     if (!file) return;
-    for (unsigned r = 0; r < rows; ++r)
-        for (unsigned c = 0; c < cols; ++c) {
+    for (unsigned r = 0; r < nrows; ++r)
+        for (unsigned c = 0; c < ncols; ++c) {
             const char *text = cells[r][c].text;
             if (!is_blank(text))
                 fprintf(file, "%u %u %s\n", r, c, text);
@@ -323,7 +323,7 @@ static void read_file(void) {
         char text[sizeof line];
         if (3 != sscanf(line, "%u %u %[^\n]", &r, &c, text))
             error("Bad line in file");
-        else if (rows <= r || cols <= c)
+        else if (nrows <= r || ncols <= c)
             error("Row or column number out of range in file");
         else
             set_text(r, c, text);
@@ -397,13 +397,13 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
     printf("%s%*u",
            view == formulas ? "(formulas)" : "          ",
            (int) (colwidth - sizeof "(formulas)" + 4), 0);
-    for (unsigned c = 1; c < cols; ++c)
+    for (unsigned c = 1; c < ncols; ++c)
         printf(" %*u", colwidth, c);
     aterm_newline();
-    for (unsigned r = 0; r < rows; ++r) {
+    for (unsigned r = 0; r < nrows; ++r) {
         set_color(border_colors);
         printf("%2u", r);
-        for (unsigned c = 0; c < cols; ++c)
+        for (unsigned c = 0; c < ncols; ++c)
             show_at(r, c, view, r == cursor_row && c == cursor_col);
         aterm_newline();
     }
@@ -412,6 +412,61 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
     printf("%-80.80s", orelse(the_plaint, orelse(cell_plaint, "")));
     the_plaint = NULL;
     aterm_clear_to_bottom();
+}
+
+
+// Keyboard input
+
+enum {
+    esc = 27,
+    key_up = 1024,   // just making up our own codes for non-ASCII keys
+    key_down,
+    key_left,
+    key_right,
+    key_unknown,
+};
+
+static int weirdo(int last_key) {
+    return last_key == EOF ? EOF : key_unknown;
+}
+
+static int modify(int m1, int n1, int key) {
+    if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
+        return weirdo(key);
+    int m = m1-1, n = n1-1;
+    if (m == 0 && n == 0)
+        return key;
+    return weirdo(key); // XXX handle chords
+}
+
+static int get_key(void) {
+    int k0 = getchar();
+    if (k0 != esc) return k0;
+    int k1 = getchar();
+    if (k1 != '[') return weirdo(k1);
+    // This ought to be a sequence like
+    //   esc, '[', optional(digit, optional(';', digit)), character.
+    // Call the digits `m1` and `n1`; they default to 1.
+    int m1 = 1, n1 = 1;
+    int k = getchar();
+    if (isdigit(k)) {
+        m1 = k - '0';
+        k = getchar();
+        if (k == ';') {
+            k = getchar();
+            if (!isdigit(k)) return weirdo(k);
+            n1 = k - '0';
+            k = getchar();
+        }
+    }
+    // Now k is the last character of the above sequence.
+    switch (k) {
+    case 'A': return modify(m1, n1, key_up);
+    case 'B': return modify(m1, n1, key_down);
+    case 'C': return modify(m1, n1, key_right);
+    case 'D': return modify(m1, n1, key_left);
+    default:  return weirdo(k);
+    }
 }
 
 
@@ -432,19 +487,19 @@ static int edit_loop(void) {
     size_t p = strlen(input);
     for (;;) {
         printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
-        int c = getchar();
-        if (c == '\r' || c == EOF)
+        int k = get_key();
+        if (k == '\r' || k == EOF)
             return 1;
-        else if (c == 7) // C-g
+        else if (k == 7) // C-g
             return 0;
-        else if (c == '\b' || c == 127) { // backspace
+        else if (k == '\b' || k == 127) { // backspace
             if (0 < p)
                 input[--p] = '\0';
         }
-        else if (isprint(c) && p+1 < sizeof input) {
-            input[p++] = c;
+        else if (isprint(k) && p+1 < sizeof input) {
+            input[p++] = k;
             input[p] = '\0';
-            putchar(c); fflush(stdout);
+            putchar(k); fflush(stdout);
         }
     }
 }
@@ -466,20 +521,29 @@ static void copy_text(unsigned r, unsigned c) {
 static void reactor_loop(void) {
     for (;;) {
         refresh();
-        int k = getchar();
-        if      (k == ' ') enter_text();
-        else if (k == 'f') view = (view == formulas ? values : formulas);
-        else if (k == 'h') col = max(col-1, 0);       // left
-        else if (k == 'j') row = min(row+1, rows-1);  // down
-        else if (k == 'k') row = max(row-1, 0);       // up
-        else if (k == 'l') col = min(col+1, cols-1);  // right
-        else if (k == 'q') break;
-        else if (k == 'w') write_file();
-        else if (k == 'H') copy_text(row,                max(col-1, 0));
-        else if (k == 'J') copy_text(min(row+1, rows-1), col);
-        else if (k == 'K') copy_text(max(row-1, 0),      col);
-        else if (k == 'L') copy_text(row,                min(col+1, cols-1));
-        else               error("Unknown key");
+        int k = get_key();
+        switch (k) {
+
+        case 'q': return;
+
+        case ' ': enter_text(); break;
+
+        case 'w': write_file(); break;
+
+        case 'f': view = (view == formulas ? values : formulas); break;
+
+        case key_left:  case 'h': col = max(col-1, 0);       break;
+        case key_right: case 'l': col = min(col+1, ncols-1); break;
+        case key_down:  case 'j': row = min(row+1, nrows-1); break;
+        case key_up:    case 'k': row = max(row-1, 0);       break;
+
+        case 'H': copy_text(row,                max(col-1, 0));       break;
+        case 'L': copy_text(row,                min(col+1, ncols-1)); break;
+        case 'J': copy_text(min(row+1, nrows-1), col);                break;
+        case 'K': copy_text(max(row-1, 0),      col);                 break;
+
+        default:  error("Unknown key");
+        }
     }
 }
 

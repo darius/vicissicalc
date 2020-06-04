@@ -25,7 +25,7 @@ Requirements:
 Brief user manual:
 
 - "wq" saves and quits.
-- Use hjkl vi keys to move around.
+- Use the arrow keys to move between cells, or else vi's hjkl keys.
 - Use the space key to enter a value into a cell.
 - Numeric values must start with =, just like formulas.
 - Refer to other cells with the @ sign.  2@3 means row 2, column 3.  r
