@@ -476,11 +476,6 @@ static View view = values;
 static int row = 0;
 static int col = 0;
 
-static void refresh(void) {
-    show(view, row, col);
-    the_plaint = NULL;
-}
-
 static char input[81];
 
 // Return true iff the user commits a change.
@@ -543,7 +538,8 @@ static void react(int key) {
 
 static void reactor_loop(void) {
     for (;;) {
-        refresh();
+        show(view, row, col);
+        the_plaint = NULL;
         int key = get_key();
         if (key == 'q') break;
         react(key);
