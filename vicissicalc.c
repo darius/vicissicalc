@@ -151,7 +151,7 @@ static Value zero_divide(Context *s) {
     return 0;
 }
 
-static Value apply(Context *s, char rator, Value lhs, Value rhs) {
+static Value apply(Context *s, int rator, Value lhs, Value rhs) {
     switch (rator) {
         case '+': return lhs + rhs;
         case '-': return lhs - rhs;
