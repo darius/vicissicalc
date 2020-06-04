@@ -545,7 +545,7 @@ static void reactor_loop(void) {
     for (;;) {
         refresh();
         int key = get_key();
-        if (key == 'q') return;
+        if (key == 'q') break;
         react(key);
     }
 }
