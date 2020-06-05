@@ -36,6 +36,4 @@ Brief user manual:
   work.  So don't do that.
 - The "w" key saves your work.  "q" quits without asking if you want
   to save unsaved changes.  So always type "wq", not just "q".
-- It looks like you can move around and edit with the arrow keys, but
-  you can't.
 - The "f" key toggles whether you see cell formulas or cell values.
