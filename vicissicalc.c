@@ -262,7 +262,7 @@ static void update(unsigned r, unsigned c) {
     error(cell->plaint);
 }
 
-// Set *value to the value of the cell at(r,c), unless there's an
+// Set *value to the value of the cell at (r,c), unless there's an
 // error; in which case return either the error's plaint or
 // derived_plaint -- the latter to keep from propagating a plaint
 // between cells -- we want to propagate only the fact of the error,
@@ -471,8 +471,7 @@ static int get_key(void) {
 // Interaction and main program
 
 static View view = values;
-static int row = 0;
-static int col = 0;
+static int row = 0, col = 0;  // The cursor
 
 static char input[81];
 
