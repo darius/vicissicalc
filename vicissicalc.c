@@ -287,8 +287,7 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
 
 static FILE *open_file(const char *filename, const char *mode) {
     FILE *file = fopen(filename, mode);
-    if (!file)
-        error(strerror(errno));
+    if (!file) error(strerror(errno));
     return file;
 }
 
