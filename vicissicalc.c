@@ -67,9 +67,8 @@ static char *dupe(const char *s) {
     return result;
 }
 
-static int is_blank(const char *s) {
-    const char *t = s + strspn(s, " \t");
-    return *t == '\0';
+static const char *skip_blanks(const char *s) {
+    return s + strspn(s, " \t\r\n\f\v");
 }
 
 static const char *orelse(const char *s1, const char *s2) {
@@ -84,95 +83,97 @@ static int max(int x, int y) { return x > y ? x : y; }
 
 typedef double Value;
 
-static const char *get_value(Value *value, unsigned row, unsigned column,
+static const char *get_value(Value *value, unsigned row, unsigned col,
                              const char *derived_plaint);
 
-typedef struct Context Context;
-struct Context {
-    const char *p;
-    unsigned row;
-    unsigned col;
-    int token;
-    Value token_value;
-    const char *plaint;
+typedef struct Evaluator Evaluator;
+struct Evaluator {
+    unsigned row, col;   // Which cell we're evaluating.
+    int token;           // The kind of lexical token we just scanned.
+    Value token_value;   //   Its value, if any.
+    const char *s;       // The rest of the expression to scan.
+    const char *plaint;  // NULL or the first error message.
 };
 
-static void complain(Context *s, const char *plaint) {
-    if (s->plaint == NULL) {
-        s->plaint = plaint;
-        s->p += strlen(s->p);
+static void fail(Evaluator *e, const char *plaint) {
+    if (e->plaint == NULL) {
+        // On the first failure, skip right to the end of the expression,
+        // making finishing the parsing effectively a no-op.
+        e->plaint = plaint;
+        e->s += strlen(e->s);
     }
 }
 
-static void next(Context *s) {
-    while (isspace(*s->p))
-        s->p++;
-    if (*s->p == '\0')
-        s->token = '\0';
-    else if (isdigit(*s->p)) {
+// Scan the next lexical token.
+static void lex(Evaluator *e) {
+    e->s = skip_blanks(e->s);
+    if (*e->s == '\0')
+        e->token = 0;   // (token 0 means end of input)
+    else if (isdigit(*e->s)) {
         char *endptr;
-        s->token = '0';
-        s->token_value = strtod(s->p, &endptr);
-        s->p = endptr;
+        e->token = '0'; // (meaning a number)
+        e->token_value = strtod(e->s, &endptr);
+        e->s = endptr; // grumble: you can't just pass &e->s above
     }
-    else if (strchr("+-*/%^@cr()", *s->p))
-        s->token = *s->p++;
+    else if (strchr("+-*/%^@cr()", *e->s))
+        e->token = *e->s++;
     else {
-        complain(s, "Syntax error: unknown token type");
-        s->token = '\0';
+        fail(e, "Syntax error: unknown token type");
+        e->token = 0;
     }
 }
 
-static Value parse_expr(Context *s, int precedence);
+// Parse functions also evaluate, and return the value.
+static Value parse_expr(Evaluator *e, int precedence);
 
-static Value parse_factor(Context *s) {
-    Value v = s->token_value;
-    switch (s->token) {
-        case '0': next(s); return v;
-        case '-': next(s); return -parse_factor(s);
-        case 'c': next(s); return s->col;
-        case 'r': next(s); return s->row;
+static Value parse_factor(Evaluator *e) {
+    Value v = e->token_value;
+    switch (e->token) {
+        case '0': lex(e); return v;
+        case '-': lex(e); return -parse_factor(e);
+        case 'c': lex(e); return e->col;
+        case 'r': lex(e); return e->row;
         case '(':
-            next(s); 
-            v = parse_expr(s, 0);
-            if (s->token != ')')
-                complain(s, "Syntax error: expected ')'");
-            next(s);
+            lex(e); 
+            v = parse_expr(e, 0);
+            if (e->token != ')')
+                fail(e, "Syntax error: expected ')'");
+            lex(e);
             return v;
         default:
-            complain(s, "Syntax error: expected a factor");
-            next(s);
+            fail(e, "Syntax error: expected a factor");
+            lex(e);
             return 0;
     }
 }
 
-static Value zero_divide(Context *s) {
-    complain(s, "Divide by 0");
+static Value zero_divide(Evaluator *e) {
+    fail(e, "Divide by 0");
     return 0;
 }
 
-static Value apply(Context *s, int rator, Value lhs, Value rhs) {
+static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
     switch (rator) {
         case '+': return lhs + rhs;
         case '-': return lhs - rhs;
         case '*': return lhs * rhs;
-        case '/': return rhs == 0 ? zero_divide(s) : lhs / rhs;
-        case '%': return rhs == 0 ? zero_divide(s) : fmod(lhs, rhs);
+        case '/': return rhs == 0 ? zero_divide(e) : lhs / rhs;
+        case '%': return rhs == 0 ? zero_divide(e) : fmod(lhs, rhs);
         case '^': return pow(lhs, rhs); // XXX report domain errors
         case '@': {
             Value value = 0;
             const char *plaint = get_value(&value, lhs, rhs, "");
-            if (plaint) complain(s, plaint);
+            if (plaint) fail(e, plaint);
             return value;
         }
         default: assert(0); return 0;
     }
 }
 
-static Value parse_expr(Context *s, int precedence) {
-    Value lhs = parse_factor(s);
+static Value parse_expr(Evaluator *e, int precedence) {
+    Value lhs = parse_factor(e);
     for (;;) {
-        int lp, rp, rator = s->token;  // left/right precedence and operator
+        int lp, rp, rator = e->token;  // left/right precedence and operator
         switch (rator) {
             case '+': lp = 1; rp = 2; break;
             case '-': lp = 1; rp = 2; break;
@@ -185,8 +186,8 @@ static Value parse_expr(Context *s, int precedence) {
         }
         if (lp < precedence)
             return lhs;
-        next(s);
-        lhs = apply(s, rator, lhs, parse_expr(s, rp));
+        lex(e);
+        lhs = apply(e, rator, lhs, parse_expr(e, rp));
     }
 }
 
@@ -198,18 +199,15 @@ static const char *find_formula(const char *s) {
 
 static const char *evaluate(Value *result, 
                             const char *expression, unsigned r, unsigned c) {
-    Context context;
-    context.plaint = NULL;
-    context.p = find_formula(expression);
-    if (!context.p)
+    Evaluator evaluator =
+        {.row = r, .col = c, .s = find_formula(expression), .plaint = NULL};
+    if (!evaluator.s)
         return "No formula";
-    context.row = r;
-    context.col = c;
-    next(&context);
-    *result = parse_expr(&context, 0);
-    if (context.token != '\0')
-        complain(&context, "Syntax error: unexpected token");
-    return context.plaint;
+    lex(&evaluator);
+    *result = parse_expr(&evaluator, 0);
+    if (evaluator.token != 0)
+        fail(&evaluator, "Syntax error: unexpected token");
+    return evaluator.plaint;
 }
 
 
@@ -217,7 +215,7 @@ static const char *evaluate(Value *result,
 
 static const char *the_plaint = NULL;
 
-static void error(const char *plaint) {
+static void oops(const char *plaint) {
     if (!the_plaint)
         the_plaint = plaint;
 }
@@ -259,7 +257,7 @@ static void update(unsigned r, unsigned c) {
     Cell *cell = &cells[r][c];
     cell->plaint = calculating;
     cell->plaint = evaluate(&cell->value, cell->text, r, c);
-    error(cell->plaint);
+    oops(cell->plaint);
 }
 
 // Set *value to the value of the cell at (r,c), unless there's an
@@ -287,7 +285,7 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
 
 static FILE *open_file(const char *filename, const char *mode) {
     FILE *file = fopen(filename, mode);
-    if (!file) error(strerror(errno));
+    if (!file) oops(strerror(errno));
     return file;
 }
 
@@ -300,7 +298,7 @@ static void write_file(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c) {
             const char *text = cells[r][c].text;
-            if (!is_blank(text))
+            if (*skip_blanks(text))
                 fprintf(file, "%u %u %s\n", r, c, text);
         }
     fclose(file);
@@ -315,9 +313,9 @@ static void read_file(void) {
         unsigned r, c;
         char text[sizeof line];
         if (3 != sscanf(line, "%u %u %[^\n]", &r, &c, text))
-            error("Bad line in file");
+            oops("Bad line in file");
         else if (nrows <= r || ncols <= c)
-            error("Row or column number out of range in file");
+            oops("Row or column number out of range in file");
         else
             set_text(r, c, text);
     }    
@@ -348,7 +346,7 @@ static Style ok_style = {
     .highlighted   = { .fg = aterm_bright(aterm_white),
                        .bg = aterm_bright(aterm_blue) }
 };
-static Style error_style = {
+static Style oops_style = {
     .unhighlighted = { .fg = aterm_black,
                        .bg = aterm_bright(aterm_cyan) },
     .highlighted   = { .fg = aterm_bright(aterm_white), 
@@ -369,7 +367,7 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
         Value value;
         const char *plaint = get_value(&value, r, c, NULL);
         if (plaint) {
-            style = &error_style;
+            style = &oops_style;
             stuff(text, sizeof text, plaint);
         }
         else
@@ -501,7 +499,7 @@ static void enter_text(void) {
     if (edit_loop())
         set_text(row, col, input);
     else
-        error("Aborted");
+        oops("Aborted");
 }
 
 static void copy_text(unsigned r, unsigned c) {
@@ -528,7 +526,7 @@ static void react(int key) {
     case key_ctrl|key_down:  copy_text(min(row+1, nrows-1), col);         break;
     case key_ctrl|key_up:    copy_text(max(row-1, 0),       col);         break;
 
-    default:  error("Unknown key");
+    default:  oops("Unknown key");
     }
 }
 
