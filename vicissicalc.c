@@ -7,37 +7,36 @@
 #include <string.h>
 
 
-// ANSI terminal control
+// ANSI screen output
 
 #define ANSI "\x1b["
 
+#define HOME             ANSI "H"
 #define CLEAR_LINE_RIGHT ANSI "K"
+#define CLEAR_TO_BOTTOM  ANSI "J"
+#define CLEAR_SCREEN     ANSI "2J" HOME
+#define NEWLINE          CLEAR_LINE_RIGHT "\r\n"
 
-static void aterm_clear_screen(void)    { printf(ANSI "2J" ANSI "H"); }
-static void aterm_clear_to_bottom(void) { printf(ANSI "J"); }
-static void aterm_home(void)            { printf(ANSI "H"); }
-static void aterm_newline(void)         { printf(CLEAR_LINE_RIGHT "\r\n"); }
+static void aterm_reset(void) { printf("\x1b" "c"); fflush(stdout); }
 
-static void aterm_reset(void)           { printf("\x1b" "c"); fflush(stdout); }
-
-static void aterm_set_foreground(unsigned color) {
+static void set_foreground(unsigned color) {
     printf(ANSI "%um", 30 + color);
 }
-static void aterm_set_background(unsigned color) {
+static void set_background(unsigned color) {
     printf(ANSI "%um", 40 + color);
 }
 
 // Colors. This is a macro for the sake of use in constant expressions:
-#define aterm_bright(color)   (60 + (color))  
+#define bright(color)   (60 + (color))  
 enum {
-    aterm_black = 0,
-    aterm_red,
-    aterm_green,
-    aterm_yellow,
-    aterm_blue,
-    aterm_magenta,
-    aterm_cyan,
-    aterm_white
+    black = 0,
+    red,
+    green,
+    yellow,
+    blue,
+    magenta,
+    cyan,
+    white
 };
 
 
@@ -332,8 +331,8 @@ struct Colors {
     unsigned fg, bg;
 };
 static void set_color(Colors colors) {
-    aterm_set_background(colors.bg);
-    aterm_set_foreground(colors.fg);
+    set_background(colors.bg);
+    set_foreground(colors.fg);
 }
 
 typedef struct Style Style;
@@ -341,19 +340,14 @@ struct Style {
     Colors unhighlighted, highlighted;
 };
 static Style ok_style = {
-    .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_white },
-    .highlighted   = { .fg = aterm_bright(aterm_white),
-                       .bg = aterm_bright(aterm_blue) }
+    .unhighlighted = { .fg = black,         .bg = white },
+    .highlighted   = { .fg = bright(white), .bg = bright(blue) }
 };
 static Style oops_style = {
-    .unhighlighted = { .fg = aterm_black,
-                       .bg = aterm_bright(aterm_cyan) },
-    .highlighted   = { .fg = aterm_bright(aterm_white), 
-                       .bg = aterm_bright(aterm_red) }
+    .unhighlighted = { .fg = black,         .bg = bright(cyan) },
+    .highlighted   = { .fg = bright(white), .bg = bright(red) }
 };
-static Colors border_colors = { .fg = aterm_blue,
-                                .bg = aterm_bright(aterm_yellow) };
+static Colors border_colors = { .fg = blue, .bg = bright(yellow) };
 
 typedef enum { formulas, values } View;
 
@@ -380,28 +374,28 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
 }
 
 static void show(View view, unsigned cursor_row, unsigned cursor_col) {
-    aterm_home();
+    printf(HOME);
     set_color(ok_style.unhighlighted);
     printf("%-79.79s", cells[cursor_row][cursor_col].text);
-    aterm_newline();
+    printf(NEWLINE);
     set_color(border_colors);
     printf("%s%*u",
            view == formulas ? "(formulas)" : "          ",
            (int) (colwidth - sizeof "(formulas)" + 4), 0);
     for (unsigned c = 1; c < ncols; ++c)
         printf(" %*u", colwidth, c);
-    aterm_newline();
+    printf(NEWLINE);
     for (unsigned r = 0; r < nrows; ++r) {
         set_color(border_colors);
         printf("%2u", r);
         for (unsigned c = 0; c < ncols; ++c)
             show_at(r, c, view, r == cursor_row && c == cursor_col);
-        aterm_newline();
+        printf(NEWLINE);
     }
     const char *cell_plaint = cells[cursor_row][cursor_col].plaint;
     if (cell_plaint == unknown) cell_plaint = NULL;
     printf("%-80.80s", orelse(the_plaint, orelse(cell_plaint, "")));
-    aterm_clear_to_bottom();
+    printf(CLEAR_TO_BOTTOM);
 }
 
 
@@ -411,12 +405,13 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
 #define nonascii(k) (256 + 8 * (k))
 
 enum {
-    esc = 27,
+    esc       = 27,
     key_up    = nonascii('A'),
     key_down  = nonascii('B'),
     key_right = nonascii('C'),
     key_left  = nonascii('D'),
-    key_weirdo = nonascii(256), // some keycode we didn't understand
+    key_weirdo = nonascii(256), // Some keycode we didn't understand
+
     key_shift = 1<<0, // Key-chord modifiers go in the low 3 bits of our code
     key_alt   = 1<<1,
     key_ctrl  = 1<<2,
@@ -544,7 +539,7 @@ int main(int argc, char **argv) {
         read_file();
     }
     system("stty raw -echo");
-    aterm_clear_screen();
+    printf(CLEAR_SCREEN);
     reactor_loop();
     system("stty sane"); aterm_reset();
     return 0;
