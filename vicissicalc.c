@@ -407,31 +407,35 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
 
 // Keyboard input
 
+// Just making up our own coding for non-ASCII keys. k is an input byte:
+#define nonascii(k) (256 + 8 * (k))
+
 enum {
     esc = 27,
-    key_up = 1024,   // just making up our own codes for non-ASCII keys
-    key_down,
-    key_left,
-    key_right,
-    key_unknown,
-    key_shift = 1<<0,   // Key-chord modifier bits for non-ASCII keys
+    key_up    = nonascii('A'),
+    key_down  = nonascii('B'),
+    key_right = nonascii('C'),
+    key_left  = nonascii('D'),
+    key_weirdo = nonascii(256), // some keycode we didn't understand
+    key_shift = 1<<0, // Key-chord modifiers go in the low 3 bits of our code
     key_alt   = 1<<1,
     key_ctrl  = 1<<2,
 };
 
+// N.B. here we've thrown away the m/n bits if there were any.
+// TODO preserve all the info even for keys we don't understand.
 static int weirdo(int last_key) {
-    return last_key == EOF ? EOF : key_unknown;
+    return last_key == EOF ? EOF : key_weirdo;
 }
 
 static int chord(int m1, int n1, int key) {
     if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
         return weirdo(key);
     int m_bits = m1-1, n_bits = n1-1;
-    if (m_bits != 0) return weirdo(key);
-    if (n_bits != 0)
-        assert(1024 <= key); // (modifier codes only go with non-ASCII keys)
+    if (m_bits != 0) return weirdo(key); // I dunno the meaning of nondefault m
+    if (n_bits != (n_bits & 7)) return weirdo(key);
     // TODO for the Home key this would need adjustment:
-    return key | n_bits;
+    return nonascii(key) | n_bits;
 }
 
 static int get_key(void) {
@@ -439,29 +443,20 @@ static int get_key(void) {
     if (k0 != esc) return k0;
     int k1 = getchar();
     if (k1 != '[') return weirdo(k1);
-    // This ought to be a sequence like
+    // This started a sequence like
     //   esc, '[', optional(digit, optional(';', digit)), character.
     // Call the digits `m1` and `n1`; they default to 1.
     int m1 = 1, n1 = 1;
     int k = getchar();
     if (isdigit(k)) {
-        m1 = k - '0';
-        k = getchar();
+        m1 = k - '0'; k = getchar();
         if (k == ';') {
             k = getchar();
             if (!isdigit(k)) return weirdo(k);
-            n1 = k - '0';
-            k = getchar();
+            n1 = k - '0'; k = getchar();
         }
     }
-    // Now k is the last character of the above sequence.
-    switch (k) {
-    case 'A': return chord(m1, n1, key_up);
-    case 'B': return chord(m1, n1, key_down);
-    case 'C': return chord(m1, n1, key_right);
-    case 'D': return chord(m1, n1, key_left);
-    default:  return weirdo(k);
-    }
+    return chord(m1, n1, k); // k being the last byte of the above sequence
 }
 
 
