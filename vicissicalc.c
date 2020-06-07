@@ -17,7 +17,7 @@
 #define CLEAR_SCREEN     ANSI "2J" HOME
 #define NEWLINE          CLEAR_LINE_RIGHT "\r\n"
 
-static void aterm_reset(void) { printf("\x1b" "c"); fflush(stdout); }
+static void screen_reset(void) { printf("\x1b" "c"); fflush(stdout); }
 
 static void set_foreground(unsigned color) {
     printf(ANSI "%um", 30 + color);
@@ -43,7 +43,7 @@ enum {
  // Utilities
 
 static void panic(const char *plaint) {
-    system("stty sane"); aterm_reset();
+    system("stty sane"); screen_reset();
     fprintf(stderr, "%s\n", plaint);
     exit(1);
 }
@@ -541,6 +541,6 @@ int main(int argc, char **argv) {
     system("stty raw -echo");
     printf(CLEAR_SCREEN);
     reactor_loop();
-    system("stty sane"); aterm_reset();
+    system("stty sane"); screen_reset();
     return 0;
 }
