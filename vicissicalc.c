@@ -19,12 +19,8 @@
 
 static void screen_reset(void) { printf("\x1b" "c"); fflush(stdout); }
 
-static void set_foreground(unsigned color) {
-    printf(ANSI "%um", 30 + color);
-}
-static void set_background(unsigned color) {
-    printf(ANSI "%um", 40 + color);
-}
+static void set_foreground(unsigned color) { printf(ANSI "%um", 30 + color); }
+static void set_background(unsigned color) { printf(ANSI "%um", 40 + color); }
 
 // Colors. This is a macro for the sake of use in constant expressions:
 #define bright(color)   (60 + (color))  
@@ -183,8 +179,7 @@ static Value parse_expr(Evaluator *e, int precedence) {
             case '@': lp = 7; rp = 8; break;
             default: return lhs;
         }
-        if (lp < precedence)
-            return lhs;
+        if (lp < precedence) return lhs;
         lex(e);
         lhs = apply(e, rator, lhs, parse_expr(e, rp));
     }
@@ -192,7 +187,7 @@ static Value parse_expr(Evaluator *e, int precedence) {
 
 // A formula, if it's given, follows the '=' prefix.
 static const char *find_formula(const char *s) {
-    const char *t = s + strspn(s, " \t");
+    const char *t = skip_blanks(s);
     return *t == '=' ? t + 1 : NULL;
 }
 
