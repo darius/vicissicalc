@@ -228,7 +228,7 @@ static const char calculating[] = "Circular reference";
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
 
-static void invalidate(void) {
+static void text_updated(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c)
             cells[r][c].plaint = unknown;
@@ -238,10 +238,10 @@ static void setup(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c)
             cells[r][c].text = dupe("");
-    invalidate();
+    text_updated();
 }
 
-static void put_text(unsigned row, unsigned col, const char *text) {
+static void set_text_only(unsigned row, unsigned col, const char *text) {
     assert(row < nrows && col < ncols);
     if (cells[row][col].text == text) return;
     free(cells[row][col].text);
@@ -249,8 +249,8 @@ static void put_text(unsigned row, unsigned col, const char *text) {
 }
 
 static void set_text(unsigned row, unsigned col, const char *text) {
-    put_text(row, col, text);
-    invalidate();
+    set_text_only(row, col, text);
+    text_updated();
 }
 
 static void update(unsigned r, unsigned c) {
@@ -325,10 +325,9 @@ static void read_file(void) {
         else if (nrows <= r || ncols <= c)
             oops("Row or column number out of range in file");
         else
-            put_text(r, c, text);
+            set_text_only(r, c, text);
     }
-    // (Doing invalidate() in set_text() just above would be quadratic.)
-    invalidate();
+    text_updated();
     fclose(file);
 }
 
