@@ -293,9 +293,15 @@ static FILE *open_file(const char *filename, const char *mode) {
 static const char *filename = NULL;
 
 static void write_file(void) {
-    assert(filename);
+    if (!filename) {
+        oops("You need to give a filename on the command line.");
+        return;
+    }
     FILE *file = open_file(filename, "w");
-    if (!file) return;
+    if (!file) {
+        oops(strerror(errno));
+        return;
+    }
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c) {
             const char *text = cells[r][c].text;
@@ -303,6 +309,7 @@ static void write_file(void) {
                 fprintf(file, "%u %u %s\n", r, c, text);
         }
     fclose(file);
+    oops("File written"); // TODO not really an oops
 }
 
 static void read_file(void) {
