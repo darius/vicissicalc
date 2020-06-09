@@ -36,6 +36,62 @@ enum {
 };
 
 
+// Keyboard input
+
+// Just making up our own coding for non-ASCII keys. k is an input byte:
+#define nonascii(k) (256 + 8 * (k))
+
+enum {
+    esc       = 27,
+    key_up    = nonascii('A'),
+    key_down  = nonascii('B'),
+    key_right = nonascii('C'),
+    key_left  = nonascii('D'),
+    key_weirdo = nonascii(256), // Some keycode we didn't understand
+
+    key_shift = 1<<0, // Key-chord modifiers go in the low 3 bits of our code
+    key_alt   = 1<<1,
+    key_ctrl  = 1<<2,
+};
+
+// N.B. here we've thrown away the m/n bits if there were any.
+// TODO preserve all the info even for keys we don't understand.
+static int weirdo(int last_key) {
+    return last_key == EOF ? EOF : key_weirdo;
+}
+
+static int chord(int m1, int n1, int key) {
+    if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
+        return weirdo(key);
+    int m_bits = m1-1, n_bits = n1-1;
+    if (m_bits != 0) return weirdo(key); // I dunno the meaning of nondefault m
+    if (n_bits != (n_bits & 7)) return weirdo(key);
+    // TODO for the Home key this would need adjustment:
+    return nonascii(key) | n_bits;
+}
+
+static int get_key(void) {
+    int k0 = getchar();
+    if (k0 != esc) return k0;
+    int k1 = getchar();
+    if (k1 != '[') return weirdo(k1);
+    // This started a sequence like
+    //   esc, '[', optional(digit, optional(';', digit)), character.
+    // Call the digits `m1` and `n1`; they default to 1.
+    int m1 = 1, n1 = 1;
+    int k = getchar();
+    if (isdigit(k)) {
+        m1 = k - '0'; k = getchar();
+        if (k == ';') {
+            k = getchar();
+            if (!isdigit(k)) return weirdo(k);
+            n1 = k - '0'; k = getchar();
+        }
+    }
+    return chord(m1, n1, k); // k being the last byte of the above sequence
+}
+
+
  // Utilities
 
 static void panic(const char *plaint) {
@@ -406,62 +462,6 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
     if (cell_plaint == unknown) cell_plaint = NULL;
     printf("%-80.80s", orelse(the_plaint, orelse(cell_plaint, "")));
     printf(CLEAR_TO_BOTTOM);
-}
-
-
-// Keyboard input
-
-// Just making up our own coding for non-ASCII keys. k is an input byte:
-#define nonascii(k) (256 + 8 * (k))
-
-enum {
-    esc       = 27,
-    key_up    = nonascii('A'),
-    key_down  = nonascii('B'),
-    key_right = nonascii('C'),
-    key_left  = nonascii('D'),
-    key_weirdo = nonascii(256), // Some keycode we didn't understand
-
-    key_shift = 1<<0, // Key-chord modifiers go in the low 3 bits of our code
-    key_alt   = 1<<1,
-    key_ctrl  = 1<<2,
-};
-
-// N.B. here we've thrown away the m/n bits if there were any.
-// TODO preserve all the info even for keys we don't understand.
-static int weirdo(int last_key) {
-    return last_key == EOF ? EOF : key_weirdo;
-}
-
-static int chord(int m1, int n1, int key) {
-    if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
-        return weirdo(key);
-    int m_bits = m1-1, n_bits = n1-1;
-    if (m_bits != 0) return weirdo(key); // I dunno the meaning of nondefault m
-    if (n_bits != (n_bits & 7)) return weirdo(key);
-    // TODO for the Home key this would need adjustment:
-    return nonascii(key) | n_bits;
-}
-
-static int get_key(void) {
-    int k0 = getchar();
-    if (k0 != esc) return k0;
-    int k1 = getchar();
-    if (k1 != '[') return weirdo(k1);
-    // This started a sequence like
-    //   esc, '[', optional(digit, optional(';', digit)), character.
-    // Call the digits `m1` and `n1`; they default to 1.
-    int m1 = 1, n1 = 1;
-    int k = getchar();
-    if (isdigit(k)) {
-        m1 = k - '0'; k = getchar();
-        if (k == ';') {
-            k = getchar();
-            if (!isdigit(k)) return weirdo(k);
-            n1 = k - '0'; k = getchar();
-        }
-    }
-    return chord(m1, n1, k); // k being the last byte of the above sequence
 }
 
 
