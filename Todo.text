@@ -6,8 +6,6 @@ two ways that can happen:
    - so keep at least one older version around
 also, give more feedback -- messages -- on writing
 
-arrow keys
-
 when editing a cell: left and right arrow, C-a, C-e, clear
 make = a keystroke command
 
@@ -71,3 +69,4 @@ top-level plaint line
 plaints from non-evaluation functions like file loading & bad keypress
 show current cell's plaint, if any, in the plaint line
 be able to abort edits with C-g
+arrow keys

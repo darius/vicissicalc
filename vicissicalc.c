@@ -174,7 +174,7 @@ static void lex(Evaluator *e) {
     }
 }
 
-// Parse functions also evaluate, and return the value.
+// These parser functions also evaluate, and return the value.
 static Value parse_expr(Evaluator *e, int precedence);
 
 static Value parse_factor(Evaluator *e) {
@@ -247,17 +247,11 @@ static const char *find_formula(const char *s) {
     return *t == '=' ? t + 1 : NULL;
 }
 
-static const char *evaluate(Value *result, 
-                            const char *expression, unsigned r, unsigned c) {
-    Evaluator evaluator =
-        {.row = r, .col = c, .s = find_formula(expression), .plaint = NULL};
-    if (!evaluator.s)
-        return "No formula";
-    lex(&evaluator);
-    *result = parse_expr(&evaluator, 0);
-    if (evaluator.token != 0)
-        fail(&evaluator, "Syntax error: unexpected token");
-    return evaluator.plaint;
+static const char *evaluate(Value *result, Evaluator *e) {
+    lex(e);
+    *result = parse_expr(e, 0);
+    if (e->token != 0) fail(e, "Syntax error: unexpected token");
+    return e->plaint;
 }
 
 
@@ -278,8 +272,8 @@ struct Cell {
 };
 
 // These states of the plaint field have special meaning -- see update():
-static const char unknown[]     = "Unknown";
-static const char calculating[] = "Circular reference";
+static const char unknown[]    = "Unknown";
+static const char evaluating[] = "Circular reference";
 
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
@@ -312,8 +306,11 @@ static void set_text(unsigned row, unsigned col, const char *text) {
 static void update(unsigned r, unsigned c) {
     assert(r < nrows && c < ncols);
     Cell *cell = &cells[r][c];
-    cell->plaint = calculating;
-    cell->plaint = evaluate(&cell->value, cell->text, r, c);
+    cell->plaint = evaluating;
+    Evaluator evaluator =
+        {.row = r, .col = c, .s = find_formula(cell->text), .plaint = NULL};
+    if (!evaluator.s) cell->plaint = "No formula";
+    else              cell->plaint = evaluate(&cell->value, &evaluator);
     oops(cell->plaint);
 }
 
@@ -329,8 +326,8 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
     Cell *cell = &cells[r][c];
     if (cell->plaint == unknown)
         update(r, c);
-    if (cell->plaint == calculating)
-        return calculating;
+    if (cell->plaint == evaluating)
+        return evaluating; // An endless recursion in evaluating this cell.
     if (cell->plaint)
         return orelse(derived_plaint, cell->plaint);
     *value = cell->value;
@@ -417,6 +414,8 @@ static Colors border_colors = { .fg = blue, .bg = bright(yellow) };
 
 typedef enum { formulas, values } View;
 
+// For the cell at (r,c), show its content or formula according to
+// `view`, in style according to `highlighted`.
 static void show_at(unsigned r, unsigned c, View view, int highlighted) {
     char text[1024];
     const Style *style = &ok_style;
