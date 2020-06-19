@@ -222,8 +222,8 @@ static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
 }
 
 static Value parse_expr(Evaluator *e, int precedence) {
-    Value lhs = parse_factor(e);
-    for (;;) {
+    Value lhs = parse_factor(e); // left-hand side of a potentially infix expr
+    for (;;) {  // Infix expressions are parsed by precedence-climbing.
         int lp, rp, rator = e->token;  // left/right precedence and operator
         switch (rator) {
             case '+': lp = 1; rp = 2; break;
@@ -337,9 +337,10 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
 
 // File loading/saving
 
-static FILE *open_file(const char *filename, const char *mode) {
+static FILE *open_file(const char *filename, const char *mode,
+                       const char *plaint) {
     FILE *file = fopen(filename, mode);
-    if (!file) oops(strerror(errno));
+    if (!file) oops(orelse(plaint, strerror(errno)));
     return file;
 }
 
@@ -347,14 +348,12 @@ static const char *filename = NULL;
 
 static void write_file(void) {
     if (!filename) {
+        // TODO get a filename via enter_text
         oops("You need to give a filename on the command line.");
         return;
     }
-    FILE *file = open_file(filename, "w");
-    if (!file) {
-        oops(strerror(errno));
-        return;
-    }
+    FILE *file = open_file(filename, "w", NULL);
+    if (!file) return;
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c) {
             const char *text = cells[r][c].text;
@@ -367,8 +366,8 @@ static void write_file(void) {
 
 static void read_file(void) {
     assert(filename);
-    FILE *file = fopen(filename, "r");
-    if (!file) return;  // XXX complain
+    FILE *file = open_file(filename, "r", "Fresh file");
+    if (!file) return;
     char line[1024];
     while (fgets(line, sizeof line, file)) {
         unsigned r, c;
