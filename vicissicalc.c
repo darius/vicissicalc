@@ -284,7 +284,7 @@ static void text_updated(void) {
             cells[r][c].plaint = unknown;
 }
 
-static void setup(void) {
+static void set_up(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c)
             cells[r][c].text = dupe("");
@@ -335,7 +335,34 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
 }
 
 
-// File loading/saving
+// Entering or editing a line of text
+
+static char input[81];
+
+// Return true iff the user commits a change.
+static int edit_input(void) {
+    size_t p = strlen(input);
+    for (;;) {
+        printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
+        int key = get_key();
+        if (key == '\r' || key == EOF)
+            return 1;
+        else if (key == 7) // C-g
+            return 0;
+        else if (key == '\b' || key == 127) { // backspace
+            if (0 < p)
+                input[--p] = '\0';
+        }
+        else if (isprint(key) && p+1 < sizeof input) {
+            input[p++] = key;
+            input[p] = '\0';
+            putchar(key); fflush(stdout);
+        }
+    }
+}
+
+
+// Loading and saving of files
 
 static FILE *open_file(const char *filename, const char *mode,
                        const char *plaint) {
@@ -344,15 +371,17 @@ static FILE *open_file(const char *filename, const char *mode,
     return file;
 }
 
-static const char *filename = NULL;
+static char spreadsheet_filename[1024]; // (wish I could use PATH_MAX)
 
 static void write_file(void) {
-    if (!filename) {
-        // TODO get a filename via enter_text
-        oops("You need to give a filename on the command line.");
+    stuff(input, sizeof input, spreadsheet_filename);
+    if (!edit_input()) {
+        oops("Aborted");
         return;
     }
-    FILE *file = open_file(filename, "w", NULL);
+    stuff(spreadsheet_filename, sizeof spreadsheet_filename, input);
+
+    FILE *file = open_file(spreadsheet_filename, "w", NULL);
     if (!file) return;
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c) {
@@ -365,8 +394,8 @@ static void write_file(void) {
 }
 
 static void read_file(void) {
-    assert(filename);
-    FILE *file = open_file(filename, "r", "Fresh file");
+    assert(*spreadsheet_filename); // Should be nonempty if we get here.
+    FILE *file = open_file(spreadsheet_filename, "r", "Fresh file");
     if (!file) return;
     char line[1024];
     while (fgets(line, sizeof line, file)) {
@@ -463,38 +492,14 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
 }
 
 
-// Interaction and main program
+// Main interaction loop and main program
 
 static View view = values;
 static int row = 0, col = 0;  // The cursor
 
-static char input[81];
-
-// Return true iff the user commits a change.
-static int edit_loop(void) {
-    size_t p = strlen(input);
-    for (;;) {
-        printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
-        int key = get_key();
-        if (key == '\r' || key == EOF)
-            return 1;
-        else if (key == 7) // C-g
-            return 0;
-        else if (key == '\b' || key == 127) { // backspace
-            if (0 < p)
-                input[--p] = '\0';
-        }
-        else if (isprint(key) && p+1 < sizeof input) {
-            input[p++] = key;
-            input[p] = '\0';
-            putchar(key); fflush(stdout);
-        }
-    }
-}
-
 static void enter_text(void) {
     stuff(input, sizeof input, cells[row][col].text);
-    if (edit_loop())
+    if (edit_input())
         set_text(row, col, input);
     else
         oops("Aborted");
@@ -524,7 +529,7 @@ static void react(int key) {
     case key_ctrl|key_down:  copy_text(min(row+1, nrows-1), col);         break;
     case key_ctrl|key_up:    copy_text(max(row-1, 0),       col);         break;
 
-    default:  oops("Unknown key");
+    default: oops("Unknown key");
     }
 }
 
@@ -539,11 +544,10 @@ static void reactor_loop(void) {
 }
 
 int main(int argc, char **argv) {
-    if (2 < argc)
-        panic("usage: vicissicalc [filename]");
-    setup();
+    if (2 < argc) panic("usage: vicissicalc [filename]");
+    set_up();
     if (argc == 2) {
-        filename = argv[1];
+        stuff(spreadsheet_filename, sizeof spreadsheet_filename, argv[1]);
         read_file();
     }
     system("stty raw -echo");

@@ -24,16 +24,18 @@ Requirements:
 
 Brief user manual:
 
-- "wq" saves and quits.
-- Use the arrow keys to move between cells, or else vi's hjkl keys.
-- Use the space key to enter a value into a cell.
+- "q" quits the session. You won't get asked if you want to save your
+  work.
+- "w" saves the spreadsheet file (w for write). It first prompts you to
+  set or change the filename. You can abort this by hitting ctrl-G.
+- Use the arrow keys to move between cells.
+- Use the space key to enter a value into a cell. Again there's ctrl-G
+  if you change your mind.
 - Numeric values must start with =, just like formulas.
 - Refer to other cells with the @ sign.  2@3 means row 2, column 3.  r
   and c are pseudovariables for the current row and column.  =(r-1)@c
   is a formula for the value in the cell above.
 - Copy formulas to neighboring cells using the ctrl-arrow key-chords.
-- If you start it without a filename, you won't be able to save your
-  work.  So don't do that.
-- The "w" key saves your work.  "q" quits without asking if you want
-  to save unsaved changes.  So always type "wq", not just "q".
+  For example, ctrl-uparrow copies the current cell's formula to the
+  cell just above it.
 - The "f" key toggles whether you see cell formulas or cell values.
