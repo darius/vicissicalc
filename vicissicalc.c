@@ -203,6 +203,8 @@ static Value zero_divide(Evaluator *e) {
     return 0;
 }
 
+static const char no_formula[] = "No formula"; // TODO collect this together with the other states
+
 static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
     switch (rator) {
         case '+': return lhs + rhs;
@@ -214,6 +216,15 @@ static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
         case '@': {
             Value value = 0;
             const char *plaint = get_value(&value, lhs, rhs, "");
+            // So you get a plaint of "" just when:
+            //   (lhs,rhs) names a cell that exists, and
+            //   the cell's evaluation is an error other than "Circular ref" or "No formula".
+            // My intention here was for a plaint of "" to signify that there's an error at the other end of the reference,
+            // and we don't want to redundantly report it here -- we only want a plaint in the cell-to-blame.
+            // But for a reference to another cell without a formula,
+            // the cell to blame is *this* cell here which tried to reference it. So, patch with the following line:
+            if (plaint == no_formula) plaint = "Referred cell has no value";
+            // TODO: with this logic laid out now, is there a simpler expression of it?
             if (plaint) fail(e, plaint);
             return value;
         }
@@ -272,7 +283,7 @@ struct Cell {
 };
 
 // These states of the plaint field have special meaning -- see update():
-static const char unknown[]    = "Unknown";
+static const char unknown[]    = "Unknown";  // TODO just use NULL for this state? We shouldn't ever see it in the UI.
 static const char evaluating[] = "Circular reference";
 
 enum { nrows = 20, ncols = 4 };
@@ -307,10 +318,9 @@ static void update(unsigned r, unsigned c) {
     assert(r < nrows && c < ncols);
     Cell *cell = &cells[r][c];
     cell->plaint = evaluating;
-    Evaluator evaluator =
-        {.row = r, .col = c, .s = find_formula(cell->text), .plaint = NULL};
-    if (!evaluator.s) cell->plaint = "No formula";
-    else              cell->plaint = evaluate(&cell->value, &evaluator);
+    const char *formula = find_formula(cell->text);
+    Evaluator evaluator = {.row = r, .col = c, .s = formula, .plaint = NULL};
+    cell->plaint = !formula ? no_formula : evaluate(&cell->value, &evaluator);
     oops(cell->plaint);
 }
 
@@ -326,10 +336,9 @@ static const char *get_value(Value *value, unsigned r, unsigned c,
     Cell *cell = &cells[r][c];
     if (cell->plaint == unknown)
         update(r, c);
-    if (cell->plaint == evaluating)
-        return evaluating; // An endless recursion in evaluating this cell.
     if (cell->plaint)
-        return orelse(derived_plaint, cell->plaint);
+        return (!derived_plaint || cell->plaint == evaluating || cell->plaint == no_formula
+                ? cell->plaint : derived_plaint);
     *value = cell->value;
     return NULL;
 }
