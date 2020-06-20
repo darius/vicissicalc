@@ -205,6 +205,27 @@ static Value zero_divide(Evaluator *e) {
 
 static const char no_formula[] = "No formula"; // TODO collect this together with the other states
 
+// The `r@c` operation in expressions, for row r, column c.
+static Value refer(Evaluator *e, Value r, Value c) {
+    if (r != (int)r || c != (int)c) {
+        fail(e, "Non-integer cell coordinate");
+        return 0;
+    }
+    Value value = 0;
+    const char *plaint = get_value(&value, (int)r, (int)c, "");
+    // So you get a plaint of "" just when:
+    //   (lhs,rhs) names a cell that exists, and
+    //   the cell's evaluation is an error other than "Circular ref" or "No formula".
+    // My intention here was for a plaint of "" to signify that there's an error at the other end of the reference,
+    // and we don't want to redundantly report it here -- we only want a plaint in the cell-to-blame.
+    // But for a reference to another cell without a formula,
+    // the cell to blame is *this* cell here which tried to reference it. So, patch with the following line:
+    if (plaint == no_formula) plaint = "Referred cell has no value";
+    // TODO: with this logic laid out now, is there a simpler expression of it?
+    if (plaint) fail(e, plaint);
+    return value;
+}
+
 static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
     switch (rator) {
         case '+': return lhs + rhs;
@@ -213,21 +234,7 @@ static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
         case '/': return rhs == 0 ? zero_divide(e) : lhs / rhs;
         case '%': return rhs == 0 ? zero_divide(e) : fmod(lhs, rhs);
         case '^': return pow(lhs, rhs); // XXX report domain errors
-        case '@': {
-            Value value = 0;
-            const char *plaint = get_value(&value, lhs, rhs, "");
-            // So you get a plaint of "" just when:
-            //   (lhs,rhs) names a cell that exists, and
-            //   the cell's evaluation is an error other than "Circular ref" or "No formula".
-            // My intention here was for a plaint of "" to signify that there's an error at the other end of the reference,
-            // and we don't want to redundantly report it here -- we only want a plaint in the cell-to-blame.
-            // But for a reference to another cell without a formula,
-            // the cell to blame is *this* cell here which tried to reference it. So, patch with the following line:
-            if (plaint == no_formula) plaint = "Referred cell has no value";
-            // TODO: with this logic laid out now, is there a simpler expression of it?
-            if (plaint) fail(e, plaint);
-            return value;
-        }
+        case '@': return refer(e, lhs, rhs);
         default: assert(0); return 0;
     }
 }
