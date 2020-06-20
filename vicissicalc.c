@@ -198,11 +198,6 @@ static Value parse_factor(Evaluator *e) {
     }
 }
 
-static Value zero_divide(Evaluator *e) {
-    fail(e, "Divide by 0");
-    return 0;
-}
-
 static const char no_formula[] = "No formula"; // TODO collect this together with the other states
 
 // The `r@c` operation in expressions, for row r, column c.
@@ -224,6 +219,11 @@ static Value refer(Evaluator *e, Value r, Value c) {
     // TODO: with this logic laid out now, is there a simpler expression of it?
     if (plaint) fail(e, plaint);
     return value;
+}
+
+static Value zero_divide(Evaluator *e) {
+    fail(e, "Divide by 0");
+    return 0;
 }
 
 static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
