@@ -501,9 +501,9 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
             show_at(r, c, view, r == cursor_row && c == cursor_col);
         printf(NEWLINE);
     }
-    const char *cell_plaint = cells[cursor_row][cursor_col].plaint;
-    if (cell_plaint == unknown) cell_plaint = NULL;
-    printf("%-80.80s", orelse(the_plaint, orelse(cell_plaint, "")));
+    const char *focus_plaint = cells[cursor_row][cursor_col].plaint;
+    if (focus_plaint == unknown) focus_plaint = NULL;
+    printf("%-80.80s", orelse(the_plaint, orelse(focus_plaint, "")));
     printf(CLEAR_TO_BOTTOM);
 }
 
