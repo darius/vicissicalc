@@ -134,8 +134,7 @@ static int max(int x, int y) { return x > y ? x : y; }
 
 typedef double Value;
 
-static const char *get_value(Value *value, unsigned row, unsigned col,
-                             const char *derived_plaint);
+static const char *get_value(Value *value, unsigned row, unsigned col);
 
 typedef struct Evaluator Evaluator;
 struct Evaluator {
@@ -198,7 +197,11 @@ static Value parse_factor(Evaluator *e) {
     }
 }
 
-static const char no_formula[] = "No formula"; // TODO collect this together with the other states
+// These states for a cell's plaint have special meaning:
+// (Also NULL is another special meaning: value is known, no error.)
+static const char stale[]    = "Stale"; // N.B. never seen in the UI.
+static const char cycle[] = "Cycle";
+static const char no_formula[] = "No formula";
 
 // The `r@c` operation in expressions, for row r, column c.
 static Value refer(Evaluator *e, Value r, Value c) {
@@ -207,17 +210,17 @@ static Value refer(Evaluator *e, Value r, Value c) {
         return 0;
     }
     Value value = 0;
-    const char *plaint = get_value(&value, (int)r, (int)c, "");
-    // So you get a plaint of "" just when:
-    //   (lhs,rhs) names a cell that exists, and
-    //   the cell's evaluation is an error other than "Circular ref" or "No formula".
-    // My intention here was for a plaint of "" to signify that there's an error at the other end of the reference,
-    // and we don't want to redundantly report it here -- we only want a plaint in the cell-to-blame.
-    // But for a reference to another cell without a formula,
-    // the cell to blame is *this* cell here which tried to reference it. So, patch with the following line:
-    if (plaint == no_formula) plaint = "Referred cell has no value";
-    // TODO: with this logic laid out now, is there a simpler expression of it?
-    if (plaint) fail(e, plaint);
+    const char *its_plaint = get_value(&value, (int)r, (int)c);
+    const char *my_plaint =
+        ( its_plaint == no_formula ? "Referred cell has no value"
+        : its_plaint == cycle ? its_plaint
+        : its_plaint               ? ""
+                                   : NULL);
+    if (my_plaint) fail(e, my_plaint);
+    // A my_plaint of "" is for when there's an error at the other end of
+    // the reference, but we don't want to redundantly report it here,
+    // with the plaint already showing in the cell-to-blame. The "Cycle" case
+    // propagates through because we don't track *who* to blame for a cycle.
     return value;
 }
 
@@ -289,17 +292,13 @@ struct Cell {
     Value value;
 };
 
-// These states of the plaint field have special meaning -- see update():
-static const char unknown[]    = "Unknown";  // TODO just use NULL for this state? We shouldn't ever see it in the UI.
-static const char evaluating[] = "Circular reference";
-
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
 
 static void text_updated(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c)
-            cells[r][c].plaint = unknown;
+            cells[r][c].plaint = stale;
 }
 
 static void set_up(void) {
@@ -321,33 +320,25 @@ static void set_text(unsigned row, unsigned col, const char *text) {
     text_updated();
 }
 
-static void update(unsigned r, unsigned c) {
+static void recalculate(unsigned r, unsigned c) {
     assert(r < nrows && c < ncols);
     Cell *cell = &cells[r][c];
-    cell->plaint = evaluating;
     const char *formula = find_formula(cell->text);
     Evaluator evaluator = {.row = r, .col = c, .s = formula, .plaint = NULL};
+    cell->plaint = cycle; // Provisionally.
     cell->plaint = !formula ? no_formula : evaluate(&cell->value, &evaluator);
     oops(cell->plaint);
 }
 
 // Set *value to the value of the cell at (r,c), unless there's an
-// error; in which case return either the error's plaint or
-// derived_plaint -- the latter to keep from propagating a plaint
-// between cells -- we want to propagate only the fact of the error,
-// not the plaint itself.
-static const char *get_value(Value *value, unsigned r, unsigned c,
-                             const char *derived_plaint) {
+// error; TODO fill in comment
+static const char *get_value(Value *value, unsigned r, unsigned c) {
     if (nrows <= r || ncols <= c)
         return "Cell out of range";
     Cell *cell = &cells[r][c];
-    if (cell->plaint == unknown)
-        update(r, c);
-    if (cell->plaint)
-        return (!derived_plaint || cell->plaint == evaluating || cell->plaint == no_formula
-                ? cell->plaint : derived_plaint);
-    *value = cell->value;
-    return NULL;
+    if (cell->plaint == stale) recalculate(r, c);
+    if (!cell->plaint) *value = cell->value;
+    return cell->plaint;
 }
 
 
@@ -468,7 +459,7 @@ static void show_at(unsigned r, unsigned c, View view, int highlighted) {
         stuff(text, sizeof text, orelse(formula, cells[r][c].text));
     else {
         Value value;
-        const char *plaint = get_value(&value, r, c, NULL);
+        const char *plaint = get_value(&value, r, c);
         if (plaint) {
             style = &oops_style;
             stuff(text, sizeof text, plaint);
@@ -502,7 +493,7 @@ static void show(View view, unsigned cursor_row, unsigned cursor_col) {
         printf(NEWLINE);
     }
     const char *focus_plaint = cells[cursor_row][cursor_col].plaint;
-    if (focus_plaint == unknown) focus_plaint = NULL;
+    if (focus_plaint == stale) focus_plaint = NULL; // `stale` here means not a formula cell
     printf("%-80.80s", orelse(the_plaint, orelse(focus_plaint, "")));
     printf(CLEAR_TO_BOTTOM);
 }
