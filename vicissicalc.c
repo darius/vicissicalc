@@ -321,6 +321,7 @@ static void set_text(unsigned row, unsigned col, const char *text) {
     text_updated();
 }
 
+// Reevaluate the cell at (r,c).
 static void recalculate(unsigned r, unsigned c) {
     assert(r < nrows && c < ncols);
     Cell *cell = &cells[r][c];
@@ -331,8 +332,8 @@ static void recalculate(unsigned r, unsigned c) {
     oops(cell->plaint);
 }
 
-// Set *value to the value of the cell at (r,c), unless there's an
-// error; TODO fill in comment
+// Set *value to the value of the cell at (r,c), unless computing it
+// yields an error. Return the plaint.
 static const char *get_value(Value *value, unsigned r, unsigned c) {
     if (nrows <= r || ncols <= c)
         return "Cell out of range";
@@ -398,7 +399,7 @@ static void write_file(void) {
                 fprintf(file, "%u %u %s\n", r, c, text);
         }
     fclose(file);
-    oops("File written"); // TODO not really an oops
+    oops("File written"); // (The message is not really an oops, though.)
 }
 
 static void read_file(void) {
