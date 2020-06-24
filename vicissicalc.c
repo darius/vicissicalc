@@ -15,6 +15,8 @@
 #define CLEAR_LINE_RIGHT ANSI "K"
 #define CLEAR_TO_BOTTOM  ANSI "J"
 #define CLEAR_SCREEN     ANSI "2J" HOME
+#define HIDE_CURSOR      ANSI "?25l"
+#define SHOW_CURSOR      ANSI "?25h"
 #define NEWLINE          CLEAR_LINE_RIGHT "\r\n"
 
 static void screen_reset(void) { printf("\x1b" "c"); fflush(stdout); }
@@ -352,8 +354,9 @@ static char input[81];
 static int edit_input(void) {
     size_t p = strlen(input);
     for (;;) {
-        printf("\r" CLEAR_LINE_RIGHT "? %s", input); fflush(stdout);
+        printf("\r" CLEAR_LINE_RIGHT "? %s" SHOW_CURSOR, input); fflush(stdout);
         int key = get_key();
+        printf(HIDE_CURSOR);
         if (key == '\r' || key == EOF)
             return 1;
         else if (key == 7) // ctrl-G to abort
@@ -560,7 +563,7 @@ int main(int argc, char **argv) {
         read_file();
     }
     system("stty raw -echo");
-    printf(CLEAR_SCREEN);
+    printf(HIDE_CURSOR CLEAR_SCREEN);
     reactor_loop();
     system("stty sane"); screen_reset();
     return 0;
