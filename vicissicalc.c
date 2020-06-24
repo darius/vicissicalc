@@ -60,6 +60,7 @@ static int weirdo(int last_key) {
     return last_key == EOF ? EOF : key_weirdo;
 }
 
+// Turn an input escape sequence into our own encoding of a keychord.
 static int chord(int m1, int n1, int key) {
     if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
         return weirdo(key);
@@ -199,7 +200,7 @@ static Value parse_factor(Evaluator *e) {
 
 // These states for a cell's plaint have special meaning:
 // (Also NULL is another special meaning: value is known, no error.)
-static const char stale[]    = "Stale"; // N.B. never seen in the UI.
+static const char stale[] = "Stale"; // N.B. never seen in the UI.
 static const char cycle[] = "Cycle";
 static const char no_formula[] = "No formula";
 
@@ -213,7 +214,7 @@ static Value refer(Evaluator *e, Value r, Value c) {
     const char *its_plaint = get_value(&value, (int)r, (int)c);
     const char *my_plaint =
         ( its_plaint == no_formula ? "Referred cell has no value"
-        : its_plaint == cycle ? its_plaint
+        : its_plaint == cycle      ? cycle
         : its_plaint               ? ""
                                    : NULL);
     if (my_plaint) fail(e, my_plaint);
@@ -354,7 +355,7 @@ static int edit_input(void) {
         int key = get_key();
         if (key == '\r' || key == EOF)
             return 1;
-        else if (key == 7) // C-g
+        else if (key == 7) // ctrl-G to abort
             return 0;
         else if (key == '\b' || key == 127) { // backspace
             if (0 < p)
