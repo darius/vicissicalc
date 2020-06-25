@@ -277,7 +277,7 @@ struct Cell {
 // These other states for a cell's plaint have special meaning:
 static const char stale[] = "Stale"; // N.B. never seen in the UI.
 static const char cycle[] = "Cycle";
-static const char no_formula[] = "No formula";
+static const char no_formula[] = "No value for referred cell";
 
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
@@ -342,17 +342,15 @@ static Value refer(Evaluator *e, Value r, Value c) {
         return 0;
     }
     Value value = 0;
-    const char *its_plaint = get_value(&value, (int)r, (int)c);
-    const char *my_plaint =
-        ( its_plaint == no_formula ? "No value for referred cell"
-        : its_plaint == cycle      ? cycle
-        : its_plaint               ? ""
-                                   : NULL);
-    if (my_plaint) fail(e, my_plaint);
-    // A my_plaint of "" is for when there's an error at the other end of
+    const char *plaint = get_value(&value, (int)r, (int)c);
+    if (plaint && plaint != no_formula && plaint != cycle) plaint = "";
+    if (plaint) fail(e, plaint);
+    // A plaint of "" is for when there's an error at the other end of
     // the reference, but we don't want to redundantly report it here,
-    // with the plaint already showing in the cell-to-blame. The "Cycle" case
-    // propagates through because we don't track *who* to blame for a cycle.
+    // ('here' meaning for the cell making the reference to the other
+    // cell) since the same plaint already shows over there in the
+    // cell-to-blame. The "Cycle" case propagates through because we
+    // don't track *who* to blame for a cycle.
     return value;
 }
 
