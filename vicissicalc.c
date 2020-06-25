@@ -58,11 +58,12 @@ enum {
 
 // N.B. here we've thrown away the m/n bits if there were any.
 // TODO preserve all the info even for keys we don't understand.
-static int weirdo(int last_key) {
-    return last_key == EOF ? EOF : key_weirdo;
+static int weirdo(int last_keycode) {
+    return last_keycode == EOF ? EOF : key_weirdo;
 }
 
 // Turn an input escape sequence into our own encoding of a keychord.
+// m1 and n1 are from the sequence's optional modifier prefix.
 static int chord(int m1, int n1, int key) {
     if (!(1 <= m1 && m1 <= 8 && 1 <= n1 && n1 <= 8))
         return weirdo(key);
@@ -140,11 +141,9 @@ static int min(int x, int y) { return x < y ? x : y; }
 static int max(int x, int y) { return x > y ? x : y; }
 
 
-// Evaluating expressions
+// Evaluating cell formulas (called 'expressions' here)
 
 typedef double Value;
-
-static const char *get_value(Value *value, unsigned row, unsigned col);
 
 typedef struct Evaluator Evaluator;
 struct Evaluator {
@@ -152,7 +151,7 @@ struct Evaluator {
     int token;           // The kind of lexical token we just scanned.
     Value token_value;   //   Its value, if any.
     const char *s;       // The rest of the expression to scan.
-    const char *plaint;  // NULL or the first error message.
+    const char *plaint;  // The first error message; NULL if none yet.
 };
 
 static void fail(Evaluator *e, const char *plaint) {
@@ -164,7 +163,7 @@ static void fail(Evaluator *e, const char *plaint) {
     }
 }
 
-// Scan the next lexical token.
+// Scan the next lexical token, and advance past it.
 static void lex(Evaluator *e) {
     e->s = skip_blanks(e->s);
     if (*e->s == '\0')
@@ -183,7 +182,7 @@ static void lex(Evaluator *e) {
     }
 }
 
-// These parser functions also evaluate, and return the value.
+// These parser functions also evaluate as they parse, and return the value.
 static Value parse_expr(Evaluator *e, int precedence);
 
 static Value parse_factor(Evaluator *e) {
@@ -207,37 +206,12 @@ static Value parse_factor(Evaluator *e) {
     }
 }
 
-// These states for a cell's plaint have special meaning:
-// (Also NULL is another special meaning: value is known, no error.)
-static const char stale[] = "Stale"; // N.B. never seen in the UI.
-static const char cycle[] = "Cycle";
-static const char no_formula[] = "No formula";
-
-// The `r@c` operation in expressions, for row r, column c.
-static Value refer(Evaluator *e, Value r, Value c) {
-    if (r != (int)r || c != (int)c) {
-        fail(e, "Non-integer cell coordinate");
-        return 0;
-    }
-    Value value = 0;
-    const char *its_plaint = get_value(&value, (int)r, (int)c);
-    const char *my_plaint =
-        ( its_plaint == no_formula ? "Referred cell has no value"
-        : its_plaint == cycle      ? cycle
-        : its_plaint               ? ""
-                                   : NULL);
-    if (my_plaint) fail(e, my_plaint);
-    // A my_plaint of "" is for when there's an error at the other end of
-    // the reference, but we don't want to redundantly report it here,
-    // with the plaint already showing in the cell-to-blame. The "Cycle" case
-    // propagates through because we don't track *who* to blame for a cycle.
-    return value;
-}
-
 static Value zero_divide(Evaluator *e) {
     fail(e, "Divide by 0");
     return 0;
 }
+
+static Value refer(Evaluator *e, Value r, Value c);
 
 static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
     switch (rator) {
@@ -252,9 +226,12 @@ static Value apply(Evaluator *e, int rator, Value lhs, Value rhs) {
     }
 }
 
+// Parse an infix subexpression, in the right-context of an operator
+// binding of tightness `precedence` (lower numbers meaning less tightly).
+// (This method is called precedence-climbing.)
 static Value parse_expr(Evaluator *e, int precedence) {
     Value lhs = parse_factor(e); // left-hand side of a potentially infix expr
-    for (;;) {  // Infix expressions are parsed by precedence-climbing.
+    for (;;) {
         int lp, rp, rator = e->token;  // left/right precedence and operator
         switch (rator) {
             case '+': lp = 1; rp = 2; break;
@@ -272,12 +249,7 @@ static Value parse_expr(Evaluator *e, int precedence) {
     }
 }
 
-// A formula, if it's given, follows the '=' prefix.
-static const char *find_formula(const char *s) {
-    const char *t = skip_blanks(s);
-    return *t == '=' ? t + 1 : NULL;
-}
-
+// Evaluate a complete formula.
 static const char *evaluate(Value *result, Evaluator *e) {
     lex(e);
     *result = parse_expr(e, 0);
@@ -297,10 +269,15 @@ static void oops(const char *plaint) {
 
 typedef struct Cell Cell;
 struct Cell {
-    char *text;                 // malloced
-    const char *plaint;         // in static memory
-    Value value;
+    char *text;          // malloced
+    const char *plaint;  // in static memory
+    Value value;         // valid if plaint is NULL
 };
+
+// These other states for a cell's plaint have special meaning:
+static const char stale[] = "Stale"; // N.B. never seen in the UI.
+static const char cycle[] = "Cycle";
+static const char no_formula[] = "No formula";
 
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
@@ -330,6 +307,12 @@ static void set_text(unsigned row, unsigned col, const char *text) {
     text_updated();
 }
 
+// A formula, if it's given, follows the '=' prefix.
+static const char *find_formula(const char *s) {
+    const char *t = skip_blanks(s);
+    return *t == '=' ? t + 1 : NULL;
+}
+
 // Reevaluate the cell at (r,c).
 static void recalculate(unsigned r, unsigned c) {
     assert(r < nrows && c < ncols);
@@ -350,6 +333,27 @@ static const char *get_value(Value *value, unsigned r, unsigned c) {
     if (cell->plaint == stale) recalculate(r, c);
     if (!cell->plaint) *value = cell->value;
     return cell->plaint;
+}
+
+// The `r@c` operation in expressions, for row r, column c.
+static Value refer(Evaluator *e, Value r, Value c) {
+    if (r != (int)r || c != (int)c) {
+        fail(e, "Non-integer cell coordinate");
+        return 0;
+    }
+    Value value = 0;
+    const char *its_plaint = get_value(&value, (int)r, (int)c);
+    const char *my_plaint =
+        ( its_plaint == no_formula ? "No value for referred cell"
+        : its_plaint == cycle      ? cycle
+        : its_plaint               ? ""
+                                   : NULL);
+    if (my_plaint) fail(e, my_plaint);
+    // A my_plaint of "" is for when there's an error at the other end of
+    // the reference, but we don't want to redundantly report it here,
+    // with the plaint already showing in the cell-to-blame. The "Cycle" case
+    // propagates through because we don't track *who* to blame for a cycle.
+    return value;
 }
 
 
