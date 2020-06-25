@@ -18,8 +18,10 @@ or other filename; 'checkbook' is the supplied sample spreadsheet.
 
 Requirements:
 
-- Building it uses sh and C.
-- Running it uses ANSI terminal escape codes and 'stty raw'.
+- A C compiler.
+- It uses ANSI terminal escape codes; pretty much every terminal knows them.
+  It's meant to work on any operating system having an `stty` program, using C
+  code like `system("stty raw");`.
 
 
 Brief user manual:

@@ -76,6 +76,13 @@ static int chord(int m1, int n1, int key) {
 static int get_key(void) {
     int k0 = getchar();
     if (k0 != esc) return k0;
+    // We just saw the start of an esc sequence. N.B. we can't tell if
+    // a bare esc key was hit by the user. We could guess it was, if
+    // we were to block on reading the next byte, but that behavior
+    // doesn't seem to be 100% correlated with that keyboard event,
+    // and we'd need underlying OS functions in place of getchar(). So
+    // we don't even try: this program doesn't use the bare esc key
+    // for anything.
     int k1 = getchar();
     if (k1 != '[') return weirdo(k1);
     // This started a sequence like
