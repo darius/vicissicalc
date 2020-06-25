@@ -282,6 +282,7 @@ static const char no_formula[] = "No value for referred cell";
 enum { nrows = 20, ncols = 4 };
 static Cell cells[nrows][ncols];
 
+// Invalidate any cached cell values, because a formula might have changed.
 static void text_updated(void) {
     for (unsigned r = 0; r < nrows; ++r)
         for (unsigned c = 0; c < ncols; ++c)
