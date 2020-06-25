@@ -296,6 +296,8 @@ static void set_up(void) {
     text_updated();
 }
 
+// (You should use set_text() by default; set_text_only() is for when
+// you want to amortize text_updated() over a whole batch of changes.)
 static void set_text_only(unsigned row, unsigned col, const char *text) {
     assert(row < nrows && col < ncols);
     if (cells[row][col].text == text) return;
